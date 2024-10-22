@@ -28,7 +28,6 @@ class _CryptoChartState extends State<CryptoChart> {
       final rates = data['rates'];
 
       setState(() {
-        // Select a subset of data for the chart
         cryptoRates = {
           'BTC': rates['BTC'],
           'ETH': rates['ETH'],
