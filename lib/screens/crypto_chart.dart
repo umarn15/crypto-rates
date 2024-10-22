@@ -12,7 +12,9 @@ class CryptoChart extends StatefulWidget {
 }
 
 class _CryptoChartState extends State<CryptoChart> {
-  Map<String, dynamic> cryptoRates = {};
+  Map<String, List<FlSpot>> cryptoHistory = {};
+  String selectedCrypto = 'BTC';
+  final timePeriod = '24h'; // can be 24h, 7d, 30d, 1y, 5y
 
   @override
   void initState() {
@@ -20,71 +22,248 @@ class _CryptoChartState extends State<CryptoChart> {
     initializeCache();
   }
 
+  Future<void> initializeCache() async {
+    await loadCachedData();
+  }
+
+  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
+    final cachedData = prefs.getString(cacheKey);
+    final cachedTimestamp = prefs.getInt(timestampKey);
+
+    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
+      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
+        setState(() {
+          cryptoHistory = Map<String, List<FlSpot>>.from(
+            json.decode(cachedData).map((key, value) => MapEntry(
+              key,
+              (value as List).map((point) => FlSpot(
+                (point['x'] as num).toDouble(),
+                (point['y'] as num).toDouble(),
+              )).toList(),
+            )),
+          );
+        });
+        print('got data from cache');
+        return;
+      }
+    }
+
+    try {
+      await fetchCryptoHistory();
+      print('did not get data from cache - fetched new data');
+    } catch (e) {
+      print('fetch failed, trying to load expired cache');
+      if (cachedData != null) {
+        await loadCachedData(ignoreTimestamp: true);
+      } else {
+        print('no cached data available');
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> fetchCryptoHistory() async {
+    try {
+      final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=10&timePeriod=$timePeriod');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'x-access-token': apiKey,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final coins = data['data']['coins'];
+
+        Map<String, List<FlSpot>> history = {};
+
+        for (var coin in coins) {
+          String symbol = coin['symbol'];
+          List<dynamic> sparkline = coin['sparkline'];
+
+          // Convert timestamp and price data to FlSpot points
+          List<FlSpot> points = [];
+          for (int i = 0; i < sparkline.length; i++) {
+            if (sparkline[i] != null) {
+              points.add(FlSpot(
+                i.toDouble(),
+                double.parse(sparkline[i]),
+              ));
+            }
+          }
+
+          history[symbol] = points;
+        }
+
+        // Cache the data
+        await prefs.setString(cacheKey, json.encode(history.map((key, value) =>
+            MapEntry(key, value.map((spot) =>
+            {'x': spot.x, 'y': spot.y}).toList()
+            ))
+        ));
+        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+
+        setState(() {
+          cryptoHistory = history;
+          if (!history.containsKey(selectedCrypto)) {
+            selectedCrypto = history.keys.first;
+          }
+        });
+
+        print('Successfully fetched historical data');
+      } else {
+        print('Failed to load data: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to load crypto history');
+      }
+    } catch (e) {
+      print('Error fetching crypto history: $e');
+      rethrow;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Crypto Rates (USD)'),
+        title: Text('Crypto Rates USD'),
+        actions: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: DropdownButton<String>(
+              value: selectedCrypto,
+              icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+              iconSize: 24,
+              elevation: 16,
+              dropdownColor: Colors.blueAccent,
+              style: TextStyle(color: Colors.white, fontSize: 16),
+              underline: SizedBox(),
+              items: cryptoHistory.keys.map((String symbol) {
+                return DropdownMenuItem<String>(
+                  value: symbol,
+                  child: Text(symbol, style: TextStyle(color: Colors.white)),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    selectedCrypto = newValue;
+                  });
+                }
+              },
+            ),
+          ),
+        ],
+
       ),
-      body: cryptoRates.isEmpty
+      body: cryptoHistory.isEmpty
           ? Center(child: CircularProgressIndicator())
           : Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: [
             Expanded(
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: cryptoRates.values.reduce((a, b) => (a as double) > (b as double) ? a : b) * 1.1,
-                  barGroups: cryptoRates.entries
-                      .map((entry) => BarChartGroupData(
-                    x: entry.key.hashCode,
-                    barRods: [
-                      BarChartRodData(
-                        toY: entry.value,
-                        color: Colors.lightBlueAccent,
-                        width: 20,
-                        borderRadius: BorderRadius.circular(4),
-                      )
-                    ],
-                  ))
-                      .toList(),
+              child: LineChart(
+                LineChartData(
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          String formattedValue;
+                          if (spot.y >= 1000000) {
+                            formattedValue = '${(spot.y / 1000000).toStringAsFixed(2)}M';
+                          } else if (spot.y >= 1000) {
+                            formattedValue = '${(spot.y / 1000).toStringAsFixed(2)}K';
+                          } else {
+                            formattedValue = spot.y.toStringAsFixed(2);
+                          }
+
+                          return LineTooltipItem(
+                            '\$$formattedValue',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: cryptoHistory[selectedCrypto] ?? [],
+                      isCurved: true,
+                      color: Colors.blue,
+                      barWidth: 2,
+                      dotData: FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: Colors.blue.withOpacity(0.2),
+                      ),
+                    ),
+                  ],
                   titlesData: FlTitlesData(
-                    show: true,
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          final title = cryptoRates.keys.firstWhere(
-                                (key) => key.hashCode == value.toInt(),
-                            orElse: () => '',
-                          );
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              title,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                          if (value % 6 == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                '${value.toInt()}h',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
+                          return const SizedBox();
                         },
                       ),
                     ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 60,
+                        reservedSize: 80,
+                        interval: 200,
                         getTitlesWidget: (value, meta) {
+                          if (value >= 1000000) {
+                            return Text(
+                              '\$${(value / 1000000).toStringAsFixed(1)}M',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 10,
+                              ),
+                            );
+                          } else if (value >= 1000) {
+                            return Text(
+                              '\$${(value / 1000).toStringAsFixed(1)}K',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 10,
+                              ),
+                            );
+                          }
                           return Text(
-                            value >= 1000
-                                ? '\$${(value / 1000).toStringAsFixed(1)}K'
-                                : '\$${value.toStringAsFixed(1)}',
-                            style: const TextStyle(
+                            '\$${value.toStringAsFixed(0)}',
+                            style: TextStyle(
                               color: Colors.black,
                               fontSize: 10,
                             ),
@@ -99,12 +278,11 @@ class _CryptoChartState extends State<CryptoChart> {
                       sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
-                  borderData: FlBorderData(show: false),
                   gridData: FlGridData(
                     drawHorizontalLine: true,
-                    horizontalInterval: 1000,
                     drawVerticalLine: false,
                   ),
+                  borderData: FlBorderData(show: false),
                 ),
               ),
             ),
@@ -112,85 +290,6 @@ class _CryptoChartState extends State<CryptoChart> {
         ),
       ),
     );
-  }
-
-  Future<void> initializeCache() async {
-    await loadCachedData();
-  }
-
-  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
-    final cachedData = prefs.getString(cacheKey);
-    final cachedTimestamp = prefs.getInt(timestampKey);
-
-    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
-      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
-        setState(() {
-          cryptoRates = Map<String, double>.from(
-              json.decode(cachedData).map((key, value) =>
-                  MapEntry(key, value.toDouble())
-              )
-          );
-        });
-        print('got data from cache');
-        return;
-      }
-    }
-
-    try {
-      await fetchCryptoRates();
-      print('did not get data from cache - fetched new data');
-    } catch (e) {
-      print('fetch failed, trying to load expired cache');
-      if (cachedData != null) {
-        await loadCachedData(ignoreTimestamp: true);
-      } else {
-        print('no cached data available');
-        rethrow;
-      }
-    }
-  }
-
-  Future<void> fetchCryptoRates() async {  // from coin ranking api https://account.coinranking.com/dashboard/api
-    try {
-      final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=10');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'x-access-token': apiKey,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final coins = data['data']['coins'];
-
-        Map<String, double> rates = {};
-
-        for (var coin in coins) {
-          String symbol = coin['symbol'];
-          double price = double.parse(coin['price']);
-          rates[symbol] = price;
-        }
-
-        // Update cache with new data
-        await prefs.setString(cacheKey, json.encode(rates));
-        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-
-        setState(() {
-          cryptoRates = rates;
-        });
-
-        print('Successfully fetched new rates');
-      } else {
-        print('Failed to load data: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        throw Exception('Failed to load crypto rates');
-      }
-    } catch (e) {
-      print('Error fetching crypto rates: $e');
-      rethrow;
-    }
   }
 
   // Future<void> fetchCryptoRates() async {  // from coin api https://customerportal.coinapi.io/
