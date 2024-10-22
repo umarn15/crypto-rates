@@ -169,7 +169,6 @@ class _CryptoChartState extends State<CryptoChart> {
 
         for (var coin in coins) {
           String symbol = coin['symbol'];
-          // Price comes as string, convert to double
           double price = double.parse(coin['price']);
           rates[symbol] = price;
         }
@@ -190,7 +189,7 @@ class _CryptoChartState extends State<CryptoChart> {
       }
     } catch (e) {
       print('Error fetching crypto rates: $e');
-      rethrow; // Allow loadCachedData to handle the error
+      rethrow;
     }
   }
 
@@ -198,6 +197,7 @@ class _CryptoChartState extends State<CryptoChart> {
   //   final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
   //
   //   try {
+// final String coinApiKey = '16EA263D-70FF-46BF-A6D8-43A5A9CECD86'; // https://customerportal.coinapi.io/
   //     final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
   //     Map<String, double> rates = {};
   //
@@ -207,7 +207,7 @@ class _CryptoChartState extends State<CryptoChart> {
   //       final response = await http.get(
   //         url,
   //         headers: {
-  //           'X-CoinAPI-Key': apiKey2,
+  //           'X-CoinAPI-Key': coinApiKey,
   //           'Accept': 'application/json',
   //         },
   //       );
@@ -244,6 +244,7 @@ class _CryptoChartState extends State<CryptoChart> {
 
 // Future<void> fetchCryptoRates() async {  // from coin layer api https://coinlayer.com/dashboard
 //   try {
+// final String apiKey = '3e4d3c79113313b97c37cdadcd6aa468';
 //     final url = 'https://api.coinlayer.com/api/live?access_key=$apiKey';
 //     final response = await http.get(Uri.parse(url));
 //
