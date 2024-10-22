@@ -1,7 +1,12 @@
 import 'package:crypto_rates/screens/crypto_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main (){
+late SharedPreferences prefs;
+
+void main () async {
+  prefs = await SharedPreferences.getInstance();
+
   runApp(MyApp());
 }
 

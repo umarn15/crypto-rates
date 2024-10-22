@@ -1,9 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import '../main.dart';
 import '../models/rates_api_service.dart';
 
 class CryptoChart extends StatefulWidget {
@@ -13,7 +13,6 @@ class CryptoChart extends StatefulWidget {
 
 class _CryptoChartState extends State<CryptoChart> {
   Map<String, dynamic> cryptoRates = {};
-  late SharedPreferences prefs;
 
   @override
   void initState() {
@@ -21,108 +20,12 @@ class _CryptoChartState extends State<CryptoChart> {
     initializeCache();
   }
 
-  Future<void> initializeCache() async {
-    prefs = await SharedPreferences.getInstance();
-    await loadCachedData();
-  }
-
-  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
-    final cachedData = prefs.getString(cacheKey);
-    final cachedTimestamp = prefs.getInt(timestampKey);
-
-    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
-      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
-        setState(() {
-          cryptoRates = Map<String, double>.from(
-              json.decode(cachedData).map((key, value) =>
-                  MapEntry(key, value.toDouble())
-              )
-          );
-        });
-        print('got data from cache');
-        return;
-      }
-    }
-
-    try {
-      await fetchCryptoRates();
-      print('did not get data from cache - fetched new data');
-    } catch (e) {
-      print('fetch failed, trying to load expired cache');
-      if (cachedData != null) {
-        await loadCachedData(ignoreTimestamp: true);
-      } else {
-        print('no cached data available');
-        rethrow;
-      }
-    }
-  }
-
-  Future<void> fetchCryptoRates() async {
-    try {
-      final url = 'https://api.coinlayer.com/api/live?access_key=$apiKey';
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final rates = data['rates'];
-
-        final newRates = {
-          'BTC': rates['BTC'].toDouble(),
-          'ETH': rates['ETH'].toDouble(),
-          'ADA': rates['ADA'].toDouble(),
-          'SOL': rates['SOL'].toDouble(),
-          'LTC': rates['LTC'].toDouble(),
-          'DOGE': rates['DOGE'].toDouble(),
-          'XRP': rates['XRP'].toDouble(),
-          'LINK': rates['LINK'].toDouble(),
-          'BCH': rates['BCH'].toDouble(),
-          'BAT': rates['BAT'].toDouble(),
-        };
-
-
-        await prefs.setString(cacheKey, json.encode(newRates));
-        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-
-        setState(() {
-          cryptoRates = newRates;
-        });
-      } else {
-        print('Failed to load data: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching crypto rates: $e');
-    }
-  }
-
-  // Future<void> refreshData() async {
-  //   // Only refresh if cache is expired
-  //   final cachedTimestamp = prefs.getInt(timestampKey);
-  //   if (cachedTimestamp != null) {
-  //     final cacheAge = DateTime.now().millisecondsSinceEpoch - cachedTimestamp;
-  //     if (cacheAge < cacheValidDuration.inMilliseconds) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text('Using cached data. Next update available in ${((cacheValidDuration.inMilliseconds - cacheAge) / 1000 / 60).toStringAsFixed(1)} minutes'),
-  //         ),
-  //       );
-  //       return;
-  //     }
-  //   }
-  //   await fetchCryptoRates();
-  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Crypto Rates (USD)'),
-        // actions: [
-        //   IconButton(
-        //     icon: Icon(Icons.refresh),
-        //     onPressed: refreshData,
-        //   ),
-        // ],
       ),
       body: cryptoRates.isEmpty
           ? Center(child: CircularProgressIndicator())
@@ -210,4 +113,125 @@ class _CryptoChartState extends State<CryptoChart> {
       ),
     );
   }
+
+  Future<void> initializeCache() async {
+    await loadCachedData();
+  }
+
+  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
+    final cachedData = prefs.getString(cacheKey);
+    final cachedTimestamp = prefs.getInt(timestampKey);
+
+    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
+      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
+        setState(() {
+          cryptoRates = Map<String, double>.from(
+              json.decode(cachedData).map((key, value) =>
+                  MapEntry(key, value.toDouble())
+              )
+          );
+        });
+        print('got data from cache');
+        return;
+      }
+    }
+
+    try {
+      await fetchCryptoRates();
+      print('did not get data from cache - fetched new data');
+    } catch (e) {
+      print('fetch failed, trying to load expired cache');
+      if (cachedData != null) {
+        await loadCachedData(ignoreTimestamp: true);
+      } else {
+        print('no cached data available');
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> fetchCryptoRates() async {  // 2nd Api https://customerportal.coinapi.io/
+    final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
+
+    try {
+      final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
+      Map<String, double> rates = {};
+
+      for (String symbol in cryptoSymbols) {
+        final url = Uri.parse('$baseUrl/$symbol/USD');
+
+        final response = await http.get(
+          url,
+          headers: {
+            'X-CoinAPI-Key': apiKey2,
+            'Accept': 'application/json',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          rates[symbol] = data['rate'].toDouble();
+
+        } else {
+          print('Failed to load $symbol: ${response.statusCode}');
+          print('Response body: ${response.body}');
+        }
+
+        // Rate limiting to avoid API throttling
+        await Future.delayed(Duration(milliseconds: 100));
+      }
+
+      if (rates.isNotEmpty) {
+        await prefs.setString(cacheKey, json.encode(rates));
+        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+
+        setState(() {
+          cryptoRates = rates;
+        });
+      } else {
+        throw Exception('No rates were fetched successfully');
+      }
+
+    } catch (e) {
+      print('Error fetching crypto rates: $e');
+      rethrow;
+    }
+  }
+
+// Future<void> fetchCryptoRates() async {  // from 1st Api https://coinlayer.com/dashboard
+//   try {
+//     final url = 'https://api.coinlayer.com/api/live?access_key=$apiKey';
+//     final response = await http.get(Uri.parse(url));
+//
+//     if (response.statusCode == 200) {
+//       final data = jsonDecode(response.body);
+//       final rates = data['rates'];
+//
+//       final newRates = {
+//         'BTC': rates['BTC'].toDouble(),
+//         'ETH': rates['ETH'].toDouble(),
+//         'ADA': rates['ADA'].toDouble(),
+//         'SOL': rates['SOL'].toDouble(),
+//         'LTC': rates['LTC'].toDouble(),
+//         'DOGE': rates['DOGE'].toDouble(),
+//         'XRP': rates['XRP'].toDouble(),
+//         'LINK': rates['LINK'].toDouble(),
+//         'BCH': rates['BCH'].toDouble(),
+//         'BAT': rates['BAT'].toDouble(),
+//       };
+//
+//
+//       await prefs.setString(cacheKey, json.encode(newRates));
+//       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+//
+//       setState(() {
+//         cryptoRates = newRates;
+//       });
+//     } else {
+//       print('Failed to load data: ${response.statusCode}');
+//     }
+//   } catch (e) {
+//     print('Error fetching crypto rates: $e');
+//   }
+// }
 }
