@@ -150,55 +150,99 @@ class _CryptoChartState extends State<CryptoChart> {
     }
   }
 
-  Future<void> fetchCryptoRates() async {  // 2nd Api https://customerportal.coinapi.io/
-    final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
-
+  Future<void> fetchCryptoRates() async {  // from coin ranking api https://account.coinranking.com/dashboard/api
     try {
-      final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
-      Map<String, double> rates = {};
+      final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=10');
 
-      for (String symbol in cryptoSymbols) {
-        final url = Uri.parse('$baseUrl/$symbol/USD');
+      final response = await http.get(
+        url,
+        headers: {
+          'x-access-token': apiKey,
+        },
+      );
 
-        final response = await http.get(
-          url,
-          headers: {
-            'X-CoinAPI-Key': apiKey2,
-            'Accept': 'application/json',
-          },
-        );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final coins = data['data']['coins'];
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          rates[symbol] = data['rate'].toDouble();
+        Map<String, double> rates = {};
 
-        } else {
-          print('Failed to load $symbol: ${response.statusCode}');
-          print('Response body: ${response.body}');
+        for (var coin in coins) {
+          String symbol = coin['symbol'];
+          // Price comes as string, convert to double
+          double price = double.parse(coin['price']);
+          rates[symbol] = price;
         }
 
-        // Rate limiting to avoid API throttling
-        await Future.delayed(Duration(milliseconds: 100));
-      }
-
-      if (rates.isNotEmpty) {
+        // Update cache with new data
         await prefs.setString(cacheKey, json.encode(rates));
         await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
 
         setState(() {
           cryptoRates = rates;
         });
-      } else {
-        throw Exception('No rates were fetched successfully');
-      }
 
+        print('Successfully fetched new rates');
+      } else {
+        print('Failed to load data: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to load crypto rates');
+      }
     } catch (e) {
       print('Error fetching crypto rates: $e');
-      rethrow;
+      rethrow; // Allow loadCachedData to handle the error
     }
   }
 
-// Future<void> fetchCryptoRates() async {  // from 1st Api https://coinlayer.com/dashboard
+  // Future<void> fetchCryptoRates() async {  // from coin api https://customerportal.coinapi.io/
+  //   final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
+  //
+  //   try {
+  //     final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
+  //     Map<String, double> rates = {};
+  //
+  //     for (String symbol in cryptoSymbols) {
+  //       final url = Uri.parse('$baseUrl/$symbol/USD');
+  //
+  //       final response = await http.get(
+  //         url,
+  //         headers: {
+  //           'X-CoinAPI-Key': apiKey2,
+  //           'Accept': 'application/json',
+  //         },
+  //       );
+  //
+  //       if (response.statusCode == 200) {
+  //         final data = jsonDecode(response.body);
+  //         rates[symbol] = data['rate'].toDouble();
+  //
+  //       } else {
+  //         print('Failed to load $symbol: ${response.statusCode}');
+  //         print('Response body: ${response.body}');
+  //       }
+  //
+  //       // Rate limiting to avoid API throttling
+  //       await Future.delayed(Duration(milliseconds: 100));
+  //     }
+  //
+  //     if (rates.isNotEmpty) {
+  //       await prefs.setString(cacheKey, json.encode(rates));
+  //       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+  //
+  //       setState(() {
+  //         cryptoRates = rates;
+  //       });
+  //     } else {
+  //       throw Exception('No rates were fetched successfully');
+  //     }
+  //
+  //   } catch (e) {
+  //     print('Error fetching crypto rates: $e');
+  //     rethrow;
+  //   }
+  // }
+
+// Future<void> fetchCryptoRates() async {  // from coin layer api https://coinlayer.com/dashboard
 //   try {
 //     final url = 'https://api.coinlayer.com/api/live?access_key=$apiKey';
 //     final response = await http.get(Uri.parse(url));
