@@ -12,7 +12,6 @@ class CryptoChart extends StatefulWidget {
 
 class _CryptoChartState extends State<CryptoChart> {
   Map<String, double> cryptoRates = {};
- // final String apiKey = '16EA263D-70FF-46BF-A6D8-43A5A9CECD86'; 2nd api
 
   @override
   void initState() {
