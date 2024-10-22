@@ -12,6 +12,7 @@ class CryptoChart extends StatefulWidget {
 
 class _CryptoChartState extends State<CryptoChart> {
   Map<String, double> cryptoRates = {};
+ // final String apiKey = '16EA263D-70FF-46BF-A6D8-43A5A9CECD86'; 2nd api
 
   @override
   void initState() {
@@ -28,7 +29,6 @@ class _CryptoChartState extends State<CryptoChart> {
       final rates = data['rates'];
 
       setState(() {
-        // Select a subset of data for the chart
         cryptoRates = {
           'BTC': rates['BTC'],
           'ETH': rates['ETH'],
@@ -47,60 +47,138 @@ class _CryptoChartState extends State<CryptoChart> {
     }
   }
 
+  // Future<void> fetchCryptoRates() async {
+  //   final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
+  //
+  //   try {
+  //     final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
+  //
+  //     Map<String, double> rates = {};
+  //
+  //     for (String symbol in cryptoSymbols) {
+  //       final url = Uri.parse('$baseUrl/$symbol/USD');
+  //
+  //       final response = await http.get(
+  //         url,
+  //         headers: {
+  //           'X-CoinAPI-Key': apiKey,
+  //           'Accept': 'application/json',
+  //         },
+  //       );
+  //
+  //       if (response.statusCode == 200) {
+  //         final data = jsonDecode(response.body);
+  //         rates[symbol] = data['rate'];
+  //       } else {
+  //         print('Failed to load $symbol: ${response.statusCode}');
+  //         print('Response body: ${response.body}');
+  //       }
+  //
+  //       await Future.delayed(Duration(milliseconds: 100));
+  //     }
+  //
+  //     setState(() {
+  //       cryptoRates = rates;
+  //     });
+  //   } catch (e) {
+  //     print('Error fetching crypto rates: $e');
+  //   }
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Crypto Rates')),
+      appBar: AppBar(
+        title: Text('Crypto Rates (USD)'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: fetchCryptoRates,
+          ),
+        ],
+      ),
       body: cryptoRates.isEmpty
           ? Center(child: CircularProgressIndicator())
           : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: BarChart(
-          BarChartData(
-            barGroups: cryptoRates.entries
-                .map((entry) => BarChartGroupData(
-              x: entry.key.hashCode, // Use a unique value as x
-              barRods: [
-                BarChartRodData(
-                  toY: entry.value,
-                  color: Colors.lightBlueAccent,
-                  width: 20,
-                )
-              ],
-            ))
-                .toList(),
-            titlesData: FlTitlesData(
-              show: true,
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (value, meta) {
-                    final title = cryptoRates.keys.firstWhere(
-                          (key) => key.hashCode == value.toInt(),
-                      orElse: () => '',
-                    );
-                    return Text(
-                      title,
-                      style: const TextStyle(color: Colors.black, fontSize: 10),
-                    );
-                  },
-                ),
-              ),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 40,
-                  getTitlesWidget: (value, meta) {
-                    return Text(
-                      value.toStringAsFixed(0),
-                      style: const TextStyle(color: Colors.black, fontSize: 10),
-                    );
-                  },
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: cryptoRates.values.reduce((a, b) => a > b ? a : b) * 1.1,
+                  barGroups: cryptoRates.entries
+                      .map((entry) => BarChartGroupData(
+                    x: entry.key.hashCode,
+                    barRods: [
+                      BarChartRodData(
+                        toY: entry.value,
+                        color: Colors.lightBlueAccent,
+                        width: 20,
+                        borderRadius: BorderRadius.circular(4),
+                      )
+                    ],
+                  ))
+                      .toList(),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final title = cryptoRates.keys.firstWhere(
+                                (key) => key.hashCode == value.toInt(),
+                            orElse: () => '',
+                          );
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              title,
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 60,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            value >= 1000
+                                ? '\$${(value / 1000).toStringAsFixed(1)}K'
+                                : '\$${value.toStringAsFixed(1)}',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  gridData: FlGridData(
+                    drawHorizontalLine: true,
+                    horizontalInterval: 1000,
+                    drawVerticalLine: false,
+                  ),
                 ),
               ),
             ),
-            borderData: FlBorderData(show: false),
-          ),
+          ],
         ),
       ),
     );
