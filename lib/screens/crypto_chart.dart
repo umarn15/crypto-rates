@@ -22,107 +22,6 @@ class _CryptoChartState extends State<CryptoChart> {
     initializeCache();
   }
 
-  Future<void> initializeCache() async {
-    await loadCachedData();
-  }
-
-  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
-    final cachedData = prefs.getString(cacheKey);
-    final cachedTimestamp = prefs.getInt(timestampKey);
-
-    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
-      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
-        setState(() {
-          cryptoHistory = Map<String, List<FlSpot>>.from(
-            json.decode(cachedData).map((key, value) => MapEntry(
-              key,
-              (value as List).map((point) => FlSpot(
-                (point['x'] as num).toDouble(),
-                (point['y'] as num).toDouble(),
-              )).toList(),
-            )),
-          );
-        });
-        print('got data from cache');
-        return;
-      }
-    }
-
-    try {
-      await fetchCryptoHistory();
-      print('did not get data from cache - fetched new data');
-    } catch (e) {
-      print('fetch failed, trying to load expired cache');
-      if (cachedData != null) {
-        await loadCachedData(ignoreTimestamp: true);
-      } else {
-        print('no cached data available');
-        rethrow;
-      }
-    }
-  }
-
-  Future<void> fetchCryptoHistory() async {
-    try {
-      final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=10&timePeriod=$timePeriod');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'x-access-token': apiKey,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final coins = data['data']['coins'];
-
-        Map<String, List<FlSpot>> history = {};
-
-        for (var coin in coins) {
-          String symbol = coin['symbol'];
-          List<dynamic> sparkline = coin['sparkline'];
-
-          // Convert timestamp and price data to FlSpot points
-          List<FlSpot> points = [];
-          for (int i = 0; i < sparkline.length; i++) {
-            if (sparkline[i] != null) {
-              points.add(FlSpot(
-                i.toDouble(),
-                double.parse(sparkline[i]),
-              ));
-            }
-          }
-
-          history[symbol] = points;
-        }
-
-        // Cache the data
-        await prefs.setString(cacheKey, json.encode(history.map((key, value) =>
-            MapEntry(key, value.map((spot) =>
-            {'x': spot.x, 'y': spot.y}).toList()
-            ))
-        ));
-        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-
-        setState(() {
-          cryptoHistory = history;
-          if (!history.containsKey(selectedCrypto)) {
-            selectedCrypto = history.keys.first;
-          }
-        });
-
-        print('Successfully fetched historical data');
-      } else {
-        print('Failed to load data: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        throw Exception('Failed to load crypto history');
-      }
-    } catch (e) {
-      print('Error fetching crypto history: $e');
-      rethrow;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,8 +141,11 @@ class _CryptoChartState extends State<CryptoChart> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 80,
-                        interval: 200,
+                        interval: 100,
                         getTitlesWidget: (value, meta) {
+
+                          if (value == meta.max) return const SizedBox();
+
                           if (value >= 1000000) {
                             return Text(
                               '\$${(value / 1000000).toStringAsFixed(1)}M',
@@ -290,6 +192,107 @@ class _CryptoChartState extends State<CryptoChart> {
         ),
       ),
     );
+  }
+
+  Future<void> initializeCache() async {
+    await loadCachedData();
+  }
+
+  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
+    final cachedData = prefs.getString(cacheKey);
+    final cachedTimestamp = prefs.getInt(timestampKey);
+
+    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
+      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
+        setState(() {
+          cryptoHistory = Map<String, List<FlSpot>>.from(
+            json.decode(cachedData).map((key, value) => MapEntry(
+              key,
+              (value as List).map((point) => FlSpot(
+                (point['x'] as num).toDouble(),
+                (point['y'] as num).toDouble(),
+              )).toList(),
+            )),
+          );
+        });
+        print('got data from cache');
+        return;
+      }
+    }
+
+    try {
+      await fetchCryptoHistory();
+      print('did not get data from cache - fetched new data');
+    } catch (e) {
+      print('fetch failed, trying to load expired cache');
+      if (cachedData != null) {
+        await loadCachedData(ignoreTimestamp: true);
+      } else {
+        print('no cached data available');
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> fetchCryptoHistory() async {
+    try {
+      final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=20&timePeriod=$timePeriod');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'x-access-token': apiKey,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final coins = data['data']['coins'];
+
+        Map<String, List<FlSpot>> history = {};
+
+        for (var coin in coins) {
+          String symbol = coin['symbol'];
+          List<dynamic> sparkline = coin['sparkline'];
+
+          List<FlSpot> points = [];
+          for (int i = 0; i < sparkline.length; i++) {
+            if (sparkline[i] != null) {
+              points.add(FlSpot(
+                i.toDouble(),
+                double.parse(sparkline[i]),
+              ));
+            }
+          }
+
+          history[symbol] = points;
+        }
+
+        // Cache the data
+        await prefs.setString(cacheKey, json.encode(history.map((key, value) =>
+            MapEntry(key, value.map((spot) =>
+            {'x': spot.x, 'y': spot.y}).toList()
+            ))
+        ));
+        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+
+        setState(() {
+          cryptoHistory = history;
+          if (!history.containsKey(selectedCrypto)) {
+            selectedCrypto = history.keys.first;
+          }
+        });
+
+        print('Successfully fetched historical data');
+      } else {
+        print('Failed to load data: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to load crypto history');
+      }
+    } catch (e) {
+      print('Error fetching crypto history: $e');
+      rethrow;
+    }
   }
 
   // Future<void> fetchCryptoRates() async {  // from coin api https://customerportal.coinapi.io/
