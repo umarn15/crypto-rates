@@ -144,7 +144,7 @@ class _CryptoChartState extends State<CryptoChart> {
                         interval: 100,
                         getTitlesWidget: (value, meta) {
 
-                          if (value == meta.max) return const SizedBox();
+                     //     if (value == meta.max) return const SizedBox();
 
                           if (value >= 1000000) {
                             return Text(
