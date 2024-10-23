@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -25,6 +27,8 @@ class _CryptoChartState extends State<CryptoChart> {
 
   @override
   Widget build(BuildContext context) {
+    var size = MediaQuery.sizeOf(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Crypto Rates USD'),
@@ -76,115 +80,125 @@ class _CryptoChartState extends State<CryptoChart> {
         child: Column(
           children: [
             Expanded(
-              child: LineChart(
-                LineChartData(
-                  lineTouchData: LineTouchData(
-                    enabled: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          String formattedValue;
-                          if (spot.y >= 1000000) {
-                            formattedValue = '${(spot.y / 1000000).toStringAsFixed(2)}M';
-                          } else if (spot.y >= 1000) {
-                            formattedValue = '${(spot.y / 1000).toStringAsFixed(2)}K';
-                          } else {
-                            formattedValue = spot.y.toStringAsFixed(2);
-                          }
-
-                          return LineTooltipItem(
-                            '\$$formattedValue',
-                            const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Container(
+                      width: max(size.width * 0.95, 600),
+                      child: LineChart(
+                        LineChartData(
+                          lineTouchData: LineTouchData(
+                            enabled: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                                return touchedSpots.map((spot) {
+                                  String formattedValue;
+                                  if (spot.y >= 1000000) {
+                                    formattedValue = '${(spot.y / 1000000).toStringAsFixed(2)}M';
+                                  } else if (spot.y >= 1000) {
+                                    formattedValue = '${(spot.y / 1000).toStringAsFixed(2)}K';
+                                  } else {
+                                    formattedValue = spot.y.toStringAsFixed(2);
+                                  }
+                      
+                                  return LineTooltipItem(
+                                    '\$$formattedValue',
+                                    const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }).toList();
+                              },
                             ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: cryptoHistory[selectedCrypto] ?? [],
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 2,
-                      dotData: FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.blue.withOpacity(0.2),
-                      ),
-                    ),
-                  ],
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          if (value % 6 == 0) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                '${value.toInt()}h',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 10,
-                                ),
+                          ),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: cryptoHistory[selectedCrypto] ?? [],
+                              isCurved: true,
+                              color: Colors.blue,
+                              barWidth: 2,
+                              dotData: FlDotData(show: false),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                color: Colors.blue.withOpacity(0.2),
                               ),
-                            );
-                          }
-                          return const SizedBox();
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 80,
-                        interval: 100,
-                        getTitlesWidget: (value, meta) {
-
-                     //     if (value == meta.max) return const SizedBox();
-
-                          if (value >= 1000000) {
-                            return Text(
-                              '\$${(value / 1000000).toStringAsFixed(1)}M',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 10,
-                              ),
-                            );
-                          } else if (value >= 1000) {
-                            return Text(
-                              '\$${(value / 1000).toStringAsFixed(1)}K',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 10,
-                              ),
-                            );
-                          }
-                          return Text(
-                            '\$${value.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
                             ),
-                          );
-                        },
+                          ],
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final interval = constraints.maxWidth < 500 ? 12 : 6;
+                                  if (value % interval == 0) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        '${value.toInt()}h',
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontSize: constraints.maxWidth < 500 ? 8 : 10,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: constraints.maxWidth < 500 ? 50 : 80,
+                                interval: 100,
+                                getTitlesWidget: (value, meta) {
+                                  if (selectedCrypto == 'BTC' && value == meta.max) return const SizedBox.shrink();
+                      
+                                  if (value >= 1000000) {
+                                    return Text(
+                                      '\$${(value / 1000000).toStringAsFixed(1)}M',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: constraints.maxWidth < 500 ? 8 : 10,
+                                      ),
+                                    );
+                                  } else if (value >= 1000) {
+                                    return Text(
+                                      '\$${(value / 1000).toStringAsFixed(1)}K',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: constraints.maxWidth < 500 ? 8 : 10,
+                                      ),
+                                    );
+                                  }
+                                  return Text(
+                                    '\$${value.toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: constraints.maxWidth < 500 ? 8 : 10,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
+                          gridData: FlGridData(
+                            drawHorizontalLine: true,
+                            drawVerticalLine: false,
+                          ),
+                          borderData: FlBorderData(show: false),
+                        ),
                       ),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  gridData: FlGridData(
-                    drawHorizontalLine: true,
-                    drawVerticalLine: false,
-                  ),
-                  borderData: FlBorderData(show: false),
+                    );
+                  },
                 ),
               ),
             ),
