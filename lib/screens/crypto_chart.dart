@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -28,6 +26,7 @@ class _CryptoChartState extends State<CryptoChart> {
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.sizeOf(context);
+    bool isDesktop = size.width > 600;
 
     return Scaffold(
       appBar: AppBar(
@@ -76,129 +75,128 @@ class _CryptoChartState extends State<CryptoChart> {
       body: cryptoHistory.isEmpty
           ? Center(child: CircularProgressIndicator())
           : Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.symmetric(horizontal: isDesktop? 12 : 8, vertical: 16),
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Container(
-                      width: max(size.width * 0.95, 600),
-                      child: LineChart(
-                        LineChartData(
-                          lineTouchData: LineTouchData(
-                            enabled: true,
-                            touchTooltipData: LineTouchTooltipData(
-                              getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                                return touchedSpots.map((spot) {
-                                  String formattedValue;
-                                  if (spot.y >= 1000000) {
-                                    formattedValue = '${(spot.y / 1000000).toStringAsFixed(2)}M';
-                                  } else if (spot.y >= 1000) {
-                                    formattedValue = '${(spot.y / 1000).toStringAsFixed(2)}K';
-                                  } else {
-                                    formattedValue = spot.y.toStringAsFixed(2);
-                                  }
-                      
-                                  return LineTooltipItem(
-                                    '\$$formattedValue',
-                                    const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                }).toList();
-                              },
-                            ),
-                          ),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: cryptoHistory[selectedCrypto] ?? [],
-                              isCurved: true,
-                              color: Colors.blue,
-                              barWidth: 2,
-                              dotData: FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: Colors.blue.withOpacity(0.2),
-                              ),
-                            ),
-                          ],
-                          titlesData: FlTitlesData(
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  final interval = constraints.maxWidth < 500 ? 12 : 6;
-                                  if (value % interval == 0) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(
-                                        '${value.toInt()}h',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: constraints.maxWidth < 500 ? 8 : 10,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox();
-                                },
-                              ),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: constraints.maxWidth < 500 ? 50 : 80,
-                                interval: 100,
-                                getTitlesWidget: (value, meta) {
-                                  if (selectedCrypto == 'BTC' && value == meta.max) return const SizedBox.shrink();
-                      
-                                  if (value >= 1000000) {
-                                    return Text(
-                                      '\$${(value / 1000000).toStringAsFixed(1)}M',
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: constraints.maxWidth < 500 ? 8 : 10,
-                                      ),
-                                    );
-                                  } else if (value >= 1000) {
-                                    return Text(
-                                      '\$${(value / 1000).toStringAsFixed(1)}K',
-                                      style: TextStyle(
-                                        color: Colors.black,
-                                        fontSize: constraints.maxWidth < 500 ? 8 : 10,
-                                      ),
-                                    );
-                                  }
-                                  return Text(
-                                    '\$${value.toStringAsFixed(0)}',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: constraints.maxWidth < 500 ? 8 : 10,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                          ),
-                          gridData: FlGridData(
-                            drawHorizontalLine: true,
-                            drawVerticalLine: false,
-                          ),
-                          borderData: FlBorderData(show: false),
+                physics: isDesktop? NeverScrollableScrollPhysics() : AlwaysScrollableScrollPhysics(),
+                child: Container(
+                  width: size.width,
+                  child: LineChart(
+                    LineChartData(
+                      minY: (cryptoHistory[selectedCrypto]?.map((spot) => spot.y).reduce((a, b) => a < b ? a : b) ?? 0) * 0.99,
+                      maxY: (cryptoHistory[selectedCrypto]?.map((spot) => spot.y).reduce((a, b) => a > b ? a : b) ?? 0) * 1.01,
+                      lineTouchData: LineTouchData(
+                        enabled: true,
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                            return touchedSpots.map((spot) {
+                              String formattedValue;
+                              if (spot.y >= 1000000) {
+                                formattedValue = '${(spot.y / 1000000).toStringAsFixed(2)}M';
+                              } else if (spot.y >= 1000) {
+                                formattedValue = '${(spot.y / 1000).toStringAsFixed(2)}K';
+                              } else {
+                                formattedValue = spot.y.toStringAsFixed(2);
+                              }
+
+                              return LineTooltipItem(
+                                '\$$formattedValue',
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }).toList();
+                          },
                         ),
                       ),
-                    );
-                  },
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: cryptoHistory[selectedCrypto] ?? [],
+                          isCurved: true,
+                          color: Colors.blue,
+                          barWidth: 2,
+                          dotData: FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: Colors.blue.withOpacity(0.2),
+                          ),
+                        ),
+                      ],
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              if (value % 6 == 0) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    '${value.toInt()}h',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const SizedBox();
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 80,
+                            interval: 200,
+                            getTitlesWidget: (value, meta) {
+
+                      //     if (selectedCrypto == 'BTC' && value == meta.max) return const SizedBox.shrink();
+
+                              if (value >= 1000000) {
+                                return Text(
+                                  '\$${(value / 1000000).toStringAsFixed(1)}M',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 10,
+                                  ),
+                                );
+                              } else if (value >= 1000) {
+                                return Text(
+                                  '\$${(value / 1000).toStringAsFixed(1)}K',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 10,
+                                  ),
+                                );
+                              }
+                              return Text(
+                                '\$${value.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
+                      gridData: FlGridData(
+                        drawHorizontalLine: true,
+                        drawVerticalLine: false,
+                      ),
+                      borderData: FlBorderData(show: false),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -309,54 +307,54 @@ class _CryptoChartState extends State<CryptoChart> {
     }
   }
 
-  // Future<void> fetchCryptoRates() async {  // from coin api https://customerportal.coinapi.io/
-  //   final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
-  //
-  //   try {
+// Future<void> fetchCryptoRates() async {  // from coin api https://customerportal.coinapi.io/
+//   final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
+//
+//   try {
 // final String coinApiKey = '16EA263D-70FF-46BF-A6D8-43A5A9CECD86'; // https://customerportal.coinapi.io/
-  //     final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
-  //     Map<String, double> rates = {};
-  //
-  //     for (String symbol in cryptoSymbols) {
-  //       final url = Uri.parse('$baseUrl/$symbol/USD');
-  //
-  //       final response = await http.get(
-  //         url,
-  //         headers: {
-  //           'X-CoinAPI-Key': coinApiKey,
-  //           'Accept': 'application/json',
-  //         },
-  //       );
-  //
-  //       if (response.statusCode == 200) {
-  //         final data = jsonDecode(response.body);
-  //         rates[symbol] = data['rate'].toDouble();
-  //
-  //       } else {
-  //         print('Failed to load $symbol: ${response.statusCode}');
-  //         print('Response body: ${response.body}');
-  //       }
-  //
-  //       // Rate limiting to avoid API throttling
-  //       await Future.delayed(Duration(milliseconds: 100));
-  //     }
-  //
-  //     if (rates.isNotEmpty) {
-  //       await prefs.setString(cacheKey, json.encode(rates));
-  //       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-  //
-  //       setState(() {
-  //         cryptoRates = rates;
-  //       });
-  //     } else {
-  //       throw Exception('No rates were fetched successfully');
-  //     }
-  //
-  //   } catch (e) {
-  //     print('Error fetching crypto rates: $e');
-  //     rethrow;
-  //   }
-  // }
+//     final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
+//     Map<String, double> rates = {};
+//
+//     for (String symbol in cryptoSymbols) {
+//       final url = Uri.parse('$baseUrl/$symbol/USD');
+//
+//       final response = await http.get(
+//         url,
+//         headers: {
+//           'X-CoinAPI-Key': coinApiKey,
+//           'Accept': 'application/json',
+//         },
+//       );
+//
+//       if (response.statusCode == 200) {
+//         final data = jsonDecode(response.body);
+//         rates[symbol] = data['rate'].toDouble();
+//
+//       } else {
+//         print('Failed to load $symbol: ${response.statusCode}');
+//         print('Response body: ${response.body}');
+//       }
+//
+//       // Rate limiting to avoid API throttling
+//       await Future.delayed(Duration(milliseconds: 100));
+//     }
+//
+//     if (rates.isNotEmpty) {
+//       await prefs.setString(cacheKey, json.encode(rates));
+//       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+//
+//       setState(() {
+//         cryptoRates = rates;
+//       });
+//     } else {
+//       throw Exception('No rates were fetched successfully');
+//     }
+//
+//   } catch (e) {
+//     print('Error fetching crypto rates: $e');
+//     rethrow;
+//   }
+// }
 
 // Future<void> fetchCryptoRates() async {  // from coin layer api https://coinlayer.com/dashboard
 //   try {

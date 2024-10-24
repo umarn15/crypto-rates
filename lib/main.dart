@@ -1,4 +1,4 @@
-import 'package:crypto_rates/screens/crypto_chart.dart';
+import 'package:crypto_rates/screens/crypto_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: CryptoChart(),
+      home: CryptoListScreen(),
     );
   }
 }
