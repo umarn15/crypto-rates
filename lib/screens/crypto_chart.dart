@@ -36,7 +36,7 @@ class _CryptoChartState extends State<CryptoChart> {
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             margin: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.blueAccent,
+              color: Colors.indigoAccent,
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
@@ -51,7 +51,7 @@ class _CryptoChartState extends State<CryptoChart> {
               icon: Icon(Icons.arrow_drop_down, color: Colors.white),
               iconSize: 24,
               elevation: 16,
-              dropdownColor: Colors.blueAccent,
+              dropdownColor: Colors.indigoAccent,
               style: TextStyle(color: Colors.white, fontSize: 16),
               underline: SizedBox(),
               items: cryptoHistory.keys.map((String symbol) {
@@ -117,12 +117,12 @@ class _CryptoChartState extends State<CryptoChart> {
                         LineChartBarData(
                           spots: cryptoHistory[selectedCrypto] ?? [],
                           isCurved: true,
-                          color: Colors.blue,
+                          color: Colors.red,
                           barWidth: 2,
                           dotData: FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: Colors.blue.withOpacity(0.2),
+                            color: Colors.red.withOpacity(0.2),
                           ),
                         ),
                       ],
@@ -137,7 +137,7 @@ class _CryptoChartState extends State<CryptoChart> {
                                   child: Text(
                                     '${value.toInt()}h',
                                     style: TextStyle(
-                                      color: Colors.black,
+                                      color: Colors.white,
                                       fontSize: 10,
                                     ),
                                   ),
@@ -160,7 +160,7 @@ class _CryptoChartState extends State<CryptoChart> {
                                 return Text(
                                   '\$${(value / 1000000).toStringAsFixed(1)}M',
                                   style: TextStyle(
-                                    color: Colors.black,
+                                    color: Colors.white,
                                     fontSize: 10,
                                   ),
                                 );
@@ -168,7 +168,7 @@ class _CryptoChartState extends State<CryptoChart> {
                                 return Text(
                                   '\$${(value / 1000).toStringAsFixed(1)}K',
                                   style: TextStyle(
-                                    color: Colors.black,
+                                    color: Colors.white,
                                     fontSize: 10,
                                   ),
                                 );
@@ -176,7 +176,7 @@ class _CryptoChartState extends State<CryptoChart> {
                               return Text(
                                 '\$${value.toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  color: Colors.black,
+                                  color: Colors.white,
                                   fontSize: 10,
                                 ),
                               );

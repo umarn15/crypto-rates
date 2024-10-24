@@ -36,13 +36,13 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.blue.shade900],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+              // decoration: BoxDecoration(
+              //   gradient: LinearGradient(
+              //     colors: [Colors.indigoAccent, Colors.indigo],
+              //     begin: Alignment.topLeft,
+              //     end: Alignment.bottomRight,
+              //   ),
+              // ),
               child: Column(
                 children: [
                   Text(
@@ -83,11 +83,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
             // Stats Section
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(12),
               child: Card(
+                color: Colors.indigo,
                 elevation: 4,
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -98,7 +99,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Divider(),
                       _buildStatRow('Rank', '#${widget.coin.rank}'),
                       _buildStatRow(
                           'Market Cap',
@@ -113,11 +113,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
             // Price Alert Section
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(12),
               child: Card(
+                color: Colors.indigo,
                 elevation: 4,
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(12),
                   child: Form(
                     key: _alertFormKey,
                     child: Column(
@@ -130,13 +131,35 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Divider(),
-                        SizedBox(height: 16),
+                        SizedBox(height: 18),
                         DropdownButtonFormField<String>(
+                          dropdownColor: Colors.blue,
                           value: _selectedCondition,
+                          icon: Icon(Icons.arrow_drop_down, color: Colors.white,),
                           decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.white),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8)),
+                            fillColor: Colors.transparent,
+                            focusColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            filled: true,
                             labelText: 'Condition',
-                            border: OutlineInputBorder(),
+                            labelStyle: TextStyle(
+                                color: Colors.grey.shade400
+                            ),
                           ),
                           items: [
                             DropdownMenuItem(
@@ -158,9 +181,31 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         TextFormField(
                           controller: _priceController,
                           decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.white),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8)),
+                            fillColor: Colors.transparent,
+                            focusColor: Colors.transparent,
+                            hoverColor: Colors.transparent,
+                            filled: true,
                             labelText: 'Price in USD',
+                            labelStyle: TextStyle(
+                              color: Colors.grey.shade400
+                            ),
                             prefixText: '\$ ',
-                            border: OutlineInputBorder(),
+                            prefixStyle: TextStyle(color: Colors.grey.shade400),
                           ),
                           keyboardType: TextInputType.numberWithOptions(decimal: true),
                           validator: (value) {
@@ -179,7 +224,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.blue,
+                              backgroundColor: Colors.indigoAccent,
                             ),
                             onPressed: () {
                               if (_alertFormKey.currentState!.validate()) {
@@ -212,11 +257,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
             // Existing Alerts Section
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(12),
               child: Card(
+                color: Colors.indigo,
                 elevation: 4,
                 child: Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -227,7 +273,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Divider(),
                       // Example alert items
                       _buildAlertItem(
                         'Above \$70,000',
@@ -256,14 +301,14 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   Widget _buildStatRow(String label, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.only(top: 12, bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              color: Colors.grey[600],
+              color: Colors.grey[300],
               fontSize: 16,
             ),
           ),

@@ -166,17 +166,17 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
               leading: Text(
                 '#${coin.rank}',
                 style: TextStyle(
-                  color: Colors.grey,
+                  color: Colors.grey.shade300,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               title: Text(
                 '${coin.name} (${coin.symbol})',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
               ),
               subtitle: Text(
                 'Market Cap: ${formatMarketCap(coin.marketCap)}',
-                style: TextStyle(color: Colors.grey[600]),
+                style: TextStyle(color: Colors.grey[400]),
               ),
               trailing: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -184,7 +184,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
                 children: [
                   Text(
                     formatPrice(coin.price),
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
                     '${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toStringAsFixed(2)}%',
