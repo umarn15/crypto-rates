@@ -5,7 +5,7 @@ TextStyle style = TextStyle(
 );
 
 ThemeData themeData = ThemeData(
-  scaffoldBackgroundColor: Colors.black,
+  scaffoldBackgroundColor: Colors.blueGrey.shade900,
   appBarTheme: AppBarTheme(
     backgroundColor: Colors.transparent,
     iconTheme: IconThemeData(color: Colors.white),
@@ -23,4 +23,25 @@ ThemeData themeData = ThemeData(
     titleMedium: style,
   ),
   cardColor: Colors.indigo,
+  inputDecorationTheme: InputDecorationTheme(
+      hintStyle: TextStyle(color: Colors.grey[400]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12)
+      ),
+      fillColor: Color(0xFF262A34),
+      filled: true
+  )
 );

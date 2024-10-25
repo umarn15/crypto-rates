@@ -1,8 +1,12 @@
 import 'dart:convert';
 
+import 'package:crypto_rates/Auth/login_screen.dart';
+import 'package:crypto_rates/models/user_model.dart';
 import 'package:crypto_rates/screens/crypto_chart.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../main.dart';
 import '../models/coin_model.dart';
 import '../models/rates_api_service.dart';
@@ -148,65 +152,127 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 6),
             child: IconButton(
-                icon: Icon(Icons.refresh),
-                onPressed: refreshData
+                icon: Icon(Icons.login),
+                onPressed: (){
+                  Navigator.of(context).push(MaterialPageRoute(builder: (context)
+                  => LoginScreen()));
+                }
             ),
           ),
         ],
       ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-        onRefresh: fetchCoins,
-        child: ListView.builder(
-          itemCount: coins.length,
-          itemBuilder: (context, index) {
-            final coin = coins[index];
-            return ListTile(
-              leading: Text(
-                '#${coin.rank}',
-                style: TextStyle(
-                  color: Colors.grey.shade300,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              title: Text(
-                '${coin.name} (${coin.symbol})',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              subtitle: Text(
-                'Market Cap: ${formatMarketCap(coin.marketCap)}',
-                style: TextStyle(color: Colors.grey[400]),
-              ),
-              trailing: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatPrice(coin.price),
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  Text(
-                    '${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toStringAsFixed(2)}%',
-                    style: TextStyle(
-                      color: coin.change24h >= 0 ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.bold,
+      drawer: Drawer(
+        child: FutureBuilder<UserModel>(
+          future: getUserData(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+
+            if (snapshot.hasError || !snapshot.hasData) {
+              return const Center(
+                child: Text('Error loading user data'),
+              );
+            }
+
+            final userData = snapshot.data!;
+
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                UserAccountsDrawerHeader(
+                  accountName: Text(userData.name),
+                  accountEmail: Text(userData.email),
+                  currentAccountPicture: CircleAvatar(
+                    child: Text(
+                      userData.name[0].toUpperCase(),
+                      style: const TextStyle(fontSize: 24),
                     ),
                   ),
-                ],
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CoinDetailScreen(coin: coin),
+                  decoration: const BoxDecoration(
+                    color: Colors.blue,
                   ),
-                );
-              },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('User ID'),
+                  subtitle: Text(userData.userId),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.calendar_today),
+                  title: const Text('Joined'),
+                  subtitle: Text(
+                    userData.createdAt != null
+                        ? DateFormat('MMM d, yyyy').format(userData.createdAt!.toDate())
+                        : 'Not available',
+                  ),
+                ),
+                const Divider(),
+                // Add more ListTiles for additional actions/navigation
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Sign Out'),
+                  onTap: () {
+                    FirebaseAuth.instance.signOut();
+                  },
+                ),
+              ],
             );
           },
         ),
       ),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
+            itemCount: coins.length,
+            itemBuilder: (context, index) {
+              final coin = coins[index];
+              return ListTile(
+                leading: Text(
+                  '#${coin.rank}',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                title: Text(
+                  '${coin.name} (${coin.symbol})',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Market Cap: ${formatMarketCap(coin.marketCap)}',
+                  style: TextStyle(color: Colors.grey[400]),
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formatPrice(coin.price),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      '${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toStringAsFixed(2)}%',
+                      style: TextStyle(
+                        color: coin.change24h >= 0 ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CoinDetailScreen(coin: coin),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
     );
   }
 }

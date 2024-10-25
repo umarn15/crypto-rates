@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/coin_model.dart';
@@ -24,6 +25,9 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Color cardColor = Colors.blueGrey.shade700;
+    final currentUser = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.coin.name} (${widget.coin.symbol})'),
@@ -36,13 +40,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(20),
-              // decoration: BoxDecoration(
-              //   gradient: LinearGradient(
-              //     colors: [Colors.indigoAccent, Colors.indigo],
-              //     begin: Alignment.topLeft,
-              //     end: Alignment.bottomRight,
-              //   ),
-              // ),
               child: Column(
                 children: [
                   Text(
@@ -85,7 +82,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             Padding(
               padding: EdgeInsets.all(12),
               child: Card(
-                color: Colors.indigo,
+                color: cardColor,
                 elevation: 4,
                 child: Padding(
                   padding: EdgeInsets.all(12),
@@ -115,7 +112,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             Padding(
               padding: EdgeInsets.all(12),
               child: Card(
-                color: Colors.indigo,
+                color: cardColor,
                 elevation: 4,
                 child: Padding(
                   padding: EdgeInsets.all(12),
@@ -133,7 +130,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         ),
                         SizedBox(height: 18),
                         DropdownButtonFormField<String>(
-                          dropdownColor: Colors.blue,
+                          dropdownColor: Colors.blueGrey.shade600,
                           value: _selectedCondition,
                           icon: Icon(Icons.arrow_drop_down, color: Colors.white,),
                           decoration: InputDecoration(
@@ -224,9 +221,21 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.indigoAccent,
+                              backgroundColor: Colors.blueGrey.shade900,
                             ),
                             onPressed: () {
+                              if(currentUser == null){
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.red,
+                                    content: Text(
+                                        'Error, You need to be logged in to set alerts'
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
                               if (_alertFormKey.currentState!.validate()) {
                                 // TODO: Implement alert functionality
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -259,7 +268,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             Padding(
               padding: EdgeInsets.all(12),
               child: Card(
-                color: Colors.indigo,
+                color: cardColor,
                 elevation: 4,
                 child: Padding(
                   padding: EdgeInsets.all(12),
@@ -337,6 +346,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
           Row(
             children: [
               Switch(
+                activeColor: Colors.green,
                 value: isEnabled,
                 onChanged: (value) {
                   // TODO: Implement enable/disable functionality

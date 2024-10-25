@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "297051487851",
+    "project_id": "crypto-rates-eda2f",
+    "storage_bucket": "crypto-rates-eda2f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:297051487851:android:a676692e83560b5b10fb2e",
+        "android_client_info": {
+          "package_name": "com.example.crypto_rates"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAC_B4j9iWs0vM3epISzsWisDYJ_mAX_ow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

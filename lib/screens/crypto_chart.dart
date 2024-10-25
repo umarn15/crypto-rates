@@ -14,7 +14,7 @@ class CryptoChart extends StatefulWidget {
 class _CryptoChartState extends State<CryptoChart> {
   Map<String, List<FlSpot>> cryptoHistory = {};
   String selectedCrypto = 'BTC';
-  final timePeriod = '24h'; // can be 24h, 7d, 30d, 1y, 5y
+  final timePeriod = '24h';
 
   @override
   void initState() {
@@ -26,7 +26,6 @@ class _CryptoChartState extends State<CryptoChart> {
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.sizeOf(context);
-    bool isDesktop = size.width > 600;
 
     return Scaffold(
       appBar: AppBar(
@@ -75,15 +74,14 @@ class _CryptoChartState extends State<CryptoChart> {
       body: cryptoHistory.isEmpty
           ? Center(child: CircularProgressIndicator())
           : Padding(
-        padding: EdgeInsets.symmetric(horizontal: isDesktop? 12 : 8, vertical: 16),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
         child: Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                physics: isDesktop? NeverScrollableScrollPhysics() : AlwaysScrollableScrollPhysics(),
                 child: Container(
-                  width: size.width,
+                  width: size.width - 32,
                   child: LineChart(
                     LineChartData(
                       minY: (cryptoHistory[selectedCrypto]?.map((spot) => spot.y).reduce((a, b) => a < b ? a : b) ?? 0) * 0.99,
@@ -280,7 +278,6 @@ class _CryptoChartState extends State<CryptoChart> {
           history[symbol] = points;
         }
 
-        // Cache the data
         await prefs.setString(cacheKey, json.encode(history.map((key, value) =>
             MapEntry(key, value.map((spot) =>
             {'x': spot.x, 'y': spot.y}).toList()
@@ -306,91 +303,4 @@ class _CryptoChartState extends State<CryptoChart> {
       rethrow;
     }
   }
-
-// Future<void> fetchCryptoRates() async {  // from coin api https://customerportal.coinapi.io/
-//   final cryptoSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LTC', 'DOGE', 'XRP', 'LINK', 'BCH', 'BAT'];
-//
-//   try {
-// final String coinApiKey = '16EA263D-70FF-46BF-A6D8-43A5A9CECD86'; // https://customerportal.coinapi.io/
-//     final baseUrl = 'https://rest.coinapi.io/v1/exchangerate';
-//     Map<String, double> rates = {};
-//
-//     for (String symbol in cryptoSymbols) {
-//       final url = Uri.parse('$baseUrl/$symbol/USD');
-//
-//       final response = await http.get(
-//         url,
-//         headers: {
-//           'X-CoinAPI-Key': coinApiKey,
-//           'Accept': 'application/json',
-//         },
-//       );
-//
-//       if (response.statusCode == 200) {
-//         final data = jsonDecode(response.body);
-//         rates[symbol] = data['rate'].toDouble();
-//
-//       } else {
-//         print('Failed to load $symbol: ${response.statusCode}');
-//         print('Response body: ${response.body}');
-//       }
-//
-//       // Rate limiting to avoid API throttling
-//       await Future.delayed(Duration(milliseconds: 100));
-//     }
-//
-//     if (rates.isNotEmpty) {
-//       await prefs.setString(cacheKey, json.encode(rates));
-//       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-//
-//       setState(() {
-//         cryptoRates = rates;
-//       });
-//     } else {
-//       throw Exception('No rates were fetched successfully');
-//     }
-//
-//   } catch (e) {
-//     print('Error fetching crypto rates: $e');
-//     rethrow;
-//   }
-// }
-
-// Future<void> fetchCryptoRates() async {  // from coin layer api https://coinlayer.com/dashboard
-//   try {
-// final String apiKey = '3e4d3c79113313b97c37cdadcd6aa468';
-//     final url = 'https://api.coinlayer.com/api/live?access_key=$apiKey';
-//     final response = await http.get(Uri.parse(url));
-//
-//     if (response.statusCode == 200) {
-//       final data = jsonDecode(response.body);
-//       final rates = data['rates'];
-//
-//       final newRates = {
-//         'BTC': rates['BTC'].toDouble(),
-//         'ETH': rates['ETH'].toDouble(),
-//         'ADA': rates['ADA'].toDouble(),
-//         'SOL': rates['SOL'].toDouble(),
-//         'LTC': rates['LTC'].toDouble(),
-//         'DOGE': rates['DOGE'].toDouble(),
-//         'XRP': rates['XRP'].toDouble(),
-//         'LINK': rates['LINK'].toDouble(),
-//         'BCH': rates['BCH'].toDouble(),
-//         'BAT': rates['BAT'].toDouble(),
-//       };
-//
-//
-//       await prefs.setString(cacheKey, json.encode(newRates));
-//       await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-//
-//       setState(() {
-//         cryptoRates = newRates;
-//       });
-//     } else {
-//       print('Failed to load data: ${response.statusCode}');
-//     }
-//   } catch (e) {
-//     print('Error fetching crypto rates: $e');
-//   }
-// }
 }
