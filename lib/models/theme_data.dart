@@ -5,7 +5,7 @@ TextStyle style = TextStyle(
 );
 
 ThemeData themeData = ThemeData(
-  scaffoldBackgroundColor: Colors.blueGrey.shade900,
+  scaffoldBackgroundColor: Colors.black,
   appBarTheme: AppBarTheme(
     backgroundColor: Colors.transparent,
     iconTheme: IconThemeData(color: Colors.white),

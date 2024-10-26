@@ -138,6 +138,9 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    TextStyle style = TextStyle(color: Colors.white, fontSize: 17);
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Cryptocurrency List'),
@@ -162,7 +165,22 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
         ],
       ),
       drawer: Drawer(
-        child: FutureBuilder<UserModel>(
+        backgroundColor: Colors.blueGrey.shade900,
+        child: user == null?
+        DrawerHeader(
+            child: Center(
+          child: GestureDetector(
+              onTap: (){
+                Navigator.of(context).push(MaterialPageRoute(builder: (context)
+                => LoginScreen()));
+              },
+              child: Text('Sign In', style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.white
+              ),)),
+        )) :
+        FutureBuilder<UserModel>(
           future: getUserData(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -183,39 +201,36 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
               padding: EdgeInsets.zero,
               children: [
                 UserAccountsDrawerHeader(
-                  accountName: Text(userData.name),
-                  accountEmail: Text(userData.email),
+                  accountName: Text(userData.name, style: style,),
+                  accountEmail: Text(userData.email, style: style,),
                   currentAccountPicture: CircleAvatar(
                     child: Text(
                       userData.name[0].toUpperCase(),
-                      style: const TextStyle(fontSize: 24),
+                      style: TextStyle(fontSize: 24, color: Colors.white),
                     ),
                   ),
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade900,
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.person),
-                  title: const Text('User ID'),
-                  subtitle: Text(userData.userId),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.calendar_today),
-                  title: const Text('Joined'),
+                  leading: const Icon(Icons.calendar_today, color: Colors.white,),
+                  title: Text('Joined', style: style,),
                   subtitle: Text(
                     userData.createdAt != null
                         ? DateFormat('MMM d, yyyy').format(userData.createdAt!.toDate())
                         : 'Not available',
+                        style: style,
                   ),
                 ),
-                const Divider(),
-                // Add more ListTiles for additional actions/navigation
+                Divider(),
                 ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Sign Out'),
-                  onTap: () {
-                    FirebaseAuth.instance.signOut();
+                  leading: Icon(Icons.logout, color: Colors.white,),
+                  title: Text('Sign Out', style: style,),
+                  onTap: () async {
+                   await FirebaseAuth.instance.signOut();
+                   Navigator.of(context).push(MaterialPageRoute(builder: (context)
+                   => LoginScreen()));
                   },
                 ),
               ],
