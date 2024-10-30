@@ -18,6 +18,8 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
   final _alertFormKey = GlobalKey<FormState>();
   final _priceController = TextEditingController();
   String? _selectedCondition = 'above';
+  final Color cardColor = Colors.blueGrey.shade700;
+  final currentUser = FirebaseAuth.instance.currentUser;
 
   late Stream<QuerySnapshot> alertsStream;
 
@@ -138,8 +140,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color cardColor = Colors.blueGrey.shade700;
-    final currentUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -287,6 +287,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         ),
                         SizedBox(height: 16),
                         TextFormField(
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _priceController,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
@@ -303,14 +304,19 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                             ),
                             enabledBorder: OutlineInputBorder(
                                 borderSide: BorderSide(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(8)),
+                                borderRadius: BorderRadius.circular(8)
+                            ),
+                            errorStyle: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14
+                            ),
                             fillColor: Colors.transparent,
                             focusColor: Colors.transparent,
                             hoverColor: Colors.transparent,
                             filled: true,
                             labelText: 'Price in USD',
                             labelStyle: TextStyle(
-                              color: Colors.grey.shade400
+                                color: Colors.grey.shade400
                             ),
                             prefixText: '\$ ',
                             prefixStyle: TextStyle(color: Colors.grey.shade400),
@@ -320,9 +326,20 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter a price';
                             }
-                            if (double.tryParse(value) == null) {
+
+                            final double? price = double.tryParse(value);
+                            if (price == null) {
                               return 'Please enter a valid number';
                             }
+
+                            if (_selectedCondition == 'below' && price >= widget.coin.price) {
+                              return 'Alert price must be below current price (${widget.coin.price.toStringAsFixed(2)})';
+                            }
+
+                            if (_selectedCondition == 'above' && price <= widget.coin.price) {
+                              return 'Alert price must be above current price (${widget.coin.price.toStringAsFixed(2)})';
+                            }
+
                             return null;
                           },
                         ),
@@ -375,10 +392,10 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
               ),
             ),
 
-            Align(
-              alignment: Alignment.center,
-              child: Padding(
-                padding: EdgeInsets.all(12),
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Container(
+                width: double.infinity,
                 child: Card(
                   color: cardColor,
                   elevation: 4,
@@ -388,16 +405,16 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Active Alerts',
+                          'Saved Alerts',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseAuth.instance.currentUser != null ? alertsStream : null,
+                          stream: currentUser != null ? alertsStream : null,
                           builder: (context, snapshot) {
-                            if (FirebaseAuth.instance.currentUser == null) {
+                            if (currentUser == null) {
                               return Padding(
                                 padding: EdgeInsets.symmetric(vertical: 16),
                                 child: Text(
@@ -431,7 +448,24 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                                 return _buildAlertItem(
                                   '${alert.condition.capitalize()} \$${alert.targetPrice.toStringAsFixed(2)}',
                                   alert.isEnabled,
-                                  onDelete: () => _deleteAlert(alert.id),
+                                  onDelete: () {
+                                    showDialog(context: context, builder: (context){
+                                      return AlertDialog(
+                                        title: Text('Are you sure you want to delete this alert?',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),),
+                                        actions: [
+                                          TextButton(onPressed: (){
+                                            Navigator.pop(context);
+                                          }, child: Text('Cancel')),
+                                          TextButton(onPressed: () async {
+                                            await _deleteAlert(alert.id);
+                                            Navigator.pop(context);
+                                          }, child: Text('Yes'))
+                                        ],
+
+                                      );
+                                    });
+                                  },
                                   onToggle: () => _toggleAlert(alert),
                                 );
                               }).toList(),

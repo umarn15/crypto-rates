@@ -74,21 +74,3 @@ class Coin {
     );
   }
 }
-  // factory Coin.fromJson(dynamic json) {
-  //   List<dynamic> sparklineData = json['sparkline'];
-  //   return Coin(
-  //     symbol: json['symbol'] ?? '',
-  //     name: json['name'] ?? '',
-  //     price: double.parse(json['price'] ?? 0.0),
-  //     iconUrl: json['iconUrl'] ?? '',
-  //     change24h: double.parse(json['change'] ?? 0.0),
-  //     marketCap: double.parse(json['marketCap'] ?? 0.0),
-  //     rank: json['rank'] ?? 0,
-  //     sparkline: sparklineData
-  //         .asMap()
-  //         .entries
-  //         .where((entry) => entry.value != null)
-  //         .map((entry) => FlSpot(entry.key.toDouble(), double.parse(entry.value)))
-  //         .toList(),
-  //   );
-  // }
