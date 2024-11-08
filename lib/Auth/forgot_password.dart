@@ -14,9 +14,8 @@ class _ForgotPasswordState extends State<ForgotPassword> {
 
 
   Future passwordReset () async {
-    bool darkMode = Theme.of(context).brightness == Brightness.dark;
 
-    TextStyle style = TextStyle(color: darkMode? Colors.grey[300] : Colors.grey[900],
+    TextStyle style = TextStyle(color: Colors.grey[200],
         fontSize: 17);
 
     setState(() {

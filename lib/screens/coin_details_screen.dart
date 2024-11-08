@@ -70,8 +70,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
         await alertRef.set(alertData);
 
-        _priceController.clear();
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -79,6 +77,8 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             ),
           ),
         );
+
+        _priceController.clear();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -140,7 +140,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.coin.name} (${widget.coin.symbol})'),
@@ -366,13 +365,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
                               if (_alertFormKey.currentState!.validate()) {
                                 await _setAlert();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'Alert set for ${widget.coin.symbol} at \$${_priceController.text}'
-                                    ),
-                                  ),
-                                );
                               }
                             },
                             child: Text(
@@ -462,7 +454,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                                             Navigator.pop(context);
                                           }, child: Text('Yes'))
                                         ],
-
                                       );
                                     });
                                   },
@@ -549,253 +540,3 @@ extension StringExtension on String {
     return "${this[0].toUpperCase()}${this.substring(1)}";
   }
 }
-
-// // functions/src/types.ts
-// interface Alert {
-//   id: string;
-//   coinId: string;
-//   coinSymbol: string;
-//   targetPrice: number;
-//   condition: 'above' | 'below';
-//   isEnabled: boolean;
-//   currentPrice: number;
-//   createdAt: FirebaseFirestore.Timestamp;
-// }
-//
-// interface User {
-//   fcmToken?: string;
-//   email: string;
-// }
-//
-// // functions/src/index.ts
-// import * as functions from 'firebase-functions';
-// import * as admin from 'firebase-admin';
-// import axios from 'axios';
-//
-// admin.initializeApp();
-//
-// const db = admin.firestore();
-// const messaging = admin.messaging();
-//
-// async function fetchCryptoPrices(symbols: string[]): Promise<Map<string, number>> {
-//   try {
-//     const response = await axios.get(
-//       `https://api.coinranking.com/v2/coins`, {
-//         headers: {
-//           'x-access-token': functions.config().coinranking.apikey
-//         },
-//         params: {
-//           symbols: symbols.join(',')
-//         }
-//       }
-//     );
-//
-//     const priceMap = new Map<string, number>();
-//     const coins = response.data.data.coins;
-//
-//     coins.forEach((coin: any) => {
-//       priceMap.set(coin.symbol, parseFloat(coin.price));
-//     });
-//
-//     return priceMap;
-//   } catch (error) {
-//     console.error('Error fetching crypto prices:', error);
-//     throw new Error('Failed to fetch crypto prices');
-//   }
-// }
-//
-// async function sendPriceAlert(
-//   userId: string,
-//   alert: Alert,
-//   currentPrice: number,
-//   fcmToken: string
-// ): Promise<void> {
-//   try {
-//     const message = {
-//       notification: {
-//         title: `${alert.coinSymbol} Price Alert`,
-//         body: `Price has gone ${alert.condition} $${alert.targetPrice.toFixed(2)} (Current: $${currentPrice.toFixed(2)})`,
-//       },
-//       data: {
-//         coinSymbol: alert.coinSymbol,
-//         targetPrice: alert.targetPrice.toString(),
-//         currentPrice: currentPrice.toString(),
-//         condition: alert.condition,
-//         alertId: alert.id,
-//       },
-//       token: fcmToken,
-//     };
-//
-//     await messaging.send(message);
-//     console.log(`Alert sent for ${alert.coinSymbol} to user ${userId}`);
-//   } catch (error) {
-//     console.error('Error sending notification:', error);
-//     if ((error as any)?.errorInfo?.code === 'messaging/registration-token-not-registered') {
-//       await db.collection('Users').doc(userId).update({
-//         fcmToken: admin.firestore.FieldValue.delete()
-//       });
-//     }
-//     throw error;
-//   }
-// }
-//
-// async function processAlert(
-//   userId: string,
-//   alert: Alert,
-//   currentPrice: number
-// ): Promise<void> {
-//   try {
-//     const shouldTrigger = alert.condition === 'above'
-//       ? currentPrice >= alert.targetPrice
-//       : currentPrice <= alert.targetPrice;
-//
-//     if (shouldTrigger) {
-//       const userDoc = await db.collection('Users').doc(userId).get();
-//       const userData = userDoc.data() as User | undefined;
-//
-//       if (userData?.fcmToken) {
-//         await sendPriceAlert(userId, alert, currentPrice, userData.fcmToken);
-//
-//         // Create alert history in user's subcollection
-//         await db.collection('Users')
-//           .doc(userId)
-//           .collection('alertHistory')
-//           .add({
-//             alertId: alert.id,
-//             coinSymbol: alert.coinSymbol,
-//             targetPrice: alert.targetPrice,
-//             triggeredPrice: currentPrice,
-//             condition: alert.condition,
-//             triggeredAt: admin.firestore.FieldValue.serverTimestamp(),
-//           });
-//
-//         // Update the alert in user's alerts subcollection
-//         await db.collection('Users')
-//           .doc(userId)
-//           .collection('alerts')
-//           .doc(alert.id)
-//           .update({
-//             isEnabled: false,
-//             triggeredAt: admin.firestore.FieldValue.serverTimestamp(),
-//             triggeredPrice: currentPrice,
-//           });
-//       }
-//     }
-//   } catch (error) {
-//     console.error(`Error processing alert ${alert.id} for user ${userId}:`, error);
-//     throw error;
-//   }
-// }
-//
-// export const checkPriceAlerts = functions.pubsub
-//   .schedule('every 5 minutes')
-//   .onRun(async (context) => {
-//     try {
-//       // Get all users
-//       const usersSnapshot = await db.collection('Users').get();
-//
-//       for (const userDoc of usersSnapshot.docs) {
-//         const userId = userDoc.id;
-//
-//         // Get active alerts for this user
-//         const alertsSnapshot = await db.collection('Users')
-//           .doc(userId)
-//           .collection('alerts')
-//           .where('isEnabled', '==', true)
-//           .get();
-//
-//         if (alertsSnapshot.empty) continue;
-//
-//         // Group alerts by coin symbol
-//         const symbolGroups = new Map<string, Alert[]>();
-//         alertsSnapshot.docs.forEach(doc => {
-//           const alert = { id: doc.id, ...doc.data() } as Alert;
-//           const alerts = symbolGroups.get(alert.coinSymbol) || [];
-//           alerts.push(alert);
-//           symbolGroups.set(alert.coinSymbol, alerts);
-//         });
-//
-//         // Fetch prices for all unique symbols
-//         const uniqueSymbols = Array.from(symbolGroups.keys());
-//         const prices = await fetchCryptoPrices(uniqueSymbols);
-//
-//         // Process alerts for this user
-//         const promises = Array.from(symbolGroups.entries()).map(
-//           async ([symbol, alerts]) => {
-//             const currentPrice = prices.get(symbol);
-//             if (currentPrice === undefined) {
-//               console.error(`No price found for symbol ${symbol}`);
-//               return;
-//             }
-//
-//             return Promise.all(
-//               alerts.map(alert => processAlert(userId, alert, currentPrice))
-//             );
-//           }
-//         );
-//
-//         await Promise.all(promises);
-//       }
-//
-//       console.log('Successfully processed alerts for all users');
-//
-//     } catch (error) {
-//       console.error('Error in checkPriceAlerts:', error);
-//       throw error;
-//     }
-//   });
-//
-// // Clean up old alert history for each user
-// export const cleanupAlertHistory = functions.pubsub
-//   .schedule('every 24 hours')
-//   .onRun(async (context) => {
-//     const thirtyDaysAgo = admin.firestore.Timestamp.fromDate(
-//       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-//     );
-//
-//     try {
-//       const usersSnapshot = await db.collection('Users').get();
-//
-//       for (const userDoc of usersSnapshot.docs) {
-//         const userId = userDoc.id;
-//
-//         const batch_size = 500;
-//         let lastDoc = null;
-//         let deletedCount = 0;
-//
-//         do {
-//           let query = db.collection('Users')
-//             .doc(userId)
-//             .collection('alertHistory')
-//             .where('triggeredAt', '<', thirtyDaysAgo)
-//             .limit(batch_size);
-//
-//           if (lastDoc) {
-//             query = query.startAfter(lastDoc);
-//           }
-//
-//           const snapshot = await query.get();
-//
-//           if (snapshot.empty) break;
-//
-//           const batch = db.batch();
-//           snapshot.docs.forEach(doc => {
-//             batch.delete(doc.ref);
-//           });
-//
-//           await batch.commit();
-//           deletedCount += snapshot.size;
-//           lastDoc = snapshot.docs[snapshot.docs.length - 1];
-//
-//           if (snapshot.size < batch_size) break;
-//
-//         } while (true);
-//
-//         console.log(`Cleaned up ${deletedCount} old alert history records for user ${userId}`);
-//       }
-//
-//     } catch (error) {
-//       console.error('Error in cleanupAlertHistory:', error);
-//       throw error;
-//     }
-//   });

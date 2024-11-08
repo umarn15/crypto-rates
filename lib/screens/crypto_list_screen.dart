@@ -20,8 +20,9 @@ class CryptoListScreen extends StatefulWidget {
 class _CryptoListScreenState extends State<CryptoListScreen> {
   List<Coin> coins = [];
   bool isLoading = true;
-  final String coinsKey = 'cached_coins';
   final String timestampKey = 'coins_timestamp';
+  final String coinsKey = 'cached_coins';
+  final String cacheKey = 'cache_key';
 
   @override
   void initState() {
@@ -70,7 +71,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
     await ApiKeyManager.resetCountsIfMonthChanged();
     String currentApiKey = await ApiKeyManager.getCurrentKey();
     bool success = false;
-    Exception? lastError;
 
     for (int i = 0; i < 4; i++) {
       try {
@@ -111,13 +111,12 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           throw Exception('Failed to load coins: ${response.statusCode}');
         }
       } catch (e) {
-        lastError = e as Exception;
         currentApiKey = await ApiKeyManager.getNextViableKey();
       }
     }
 
     if (!success) {
-      throw lastError ?? Exception('All API keys exhausted');
+       print('All API keys exhausted');
     }
   }
 
@@ -213,7 +212,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.calendar_today, color: Colors.white,),
+                  leading: Icon(Icons.calendar_today, color: Colors.white,),
                   title: Text('Joined', style: style,),
                   subtitle: Text(
                     userData.createdAt != null
@@ -242,7 +241,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
                               => LoginScreen()));
                             }, child: Text('Yes'))
                           ],
-
                        );
                     });
                   },

@@ -21,6 +21,7 @@ class ApiKeyManager {
     await prefs.setInt(countKey, currentCount + 1);
   }
 
+
   static Future<String> getNextViableKey() async {
     String countKey = '${_apiCallsCountKey}_$_currentKeyIndex';
     int currentCount = prefs.getInt(countKey) ?? 0;

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../main.dart';
+import '../models/api_key_manager.dart';
 import '../models/rates_api_service.dart';
 
 class CryptoChart extends StatefulWidget {
@@ -69,7 +70,6 @@ class _CryptoChartState extends State<CryptoChart> {
             ),
           ),
         ],
-
       ),
       body: cryptoHistory.isEmpty
           ? Center(child: CircularProgressIndicator())
@@ -87,7 +87,6 @@ class _CryptoChartState extends State<CryptoChart> {
                       minY: (cryptoHistory[selectedCrypto]?.map((spot) => spot.y).reduce((a, b) => a < b ? a : b) ?? 0) * 0.99,
                       maxY: (cryptoHistory[selectedCrypto]?.map((spot) => spot.y).reduce((a, b) => a > b ? a : b) ?? 0) * 1.01,
                       lineTouchData: LineTouchData(
-                        enabled: true,
                         touchTooltipData: LineTouchTooltipData(
                           getTooltipItems: (List<LineBarSpot> touchedSpots) {
                             return touchedSpots.map((spot) {
@@ -232,7 +231,6 @@ class _CryptoChartState extends State<CryptoChart> {
 
     try {
       await fetchCryptoHistory();
-      print('did not get data from cache - fetched new data');
     } catch (e) {
       print('fetch failed, trying to load expired cache');
       if (cachedData != null) {
@@ -245,62 +243,78 @@ class _CryptoChartState extends State<CryptoChart> {
   }
 
   Future<void> fetchCryptoHistory() async {
-    try {
-      final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=20&timePeriod=$timePeriod');
+    await ApiKeyManager.resetCountsIfMonthChanged();
+    String currentApiKey = await ApiKeyManager.getCurrentKey();
+    bool success = false;
 
-      final response = await http.get(
-        url,
-        headers: {
-          'x-access-token': apiKey,
-        },
-      );
+    for (int i = 0; i < 4; i++) {
+      try {
+        final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=20&timePeriod=$timePeriod');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final coins = data['data']['coins'];
+        final response = await http.get(
+          url,
+          headers: {
+            'x-access-token': currentApiKey,
+          },
+        );
 
-        Map<String, List<FlSpot>> history = {};
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final coins = data['data']['coins'];
 
-        for (var coin in coins) {
-          String symbol = coin['symbol'];
-          List<dynamic> sparkline = coin['sparkline'];
+          Map<String, List<FlSpot>> history = {};
 
-          List<FlSpot> points = [];
-          for (int i = 0; i < sparkline.length; i++) {
-            if (sparkline[i] != null) {
-              points.add(FlSpot(
-                i.toDouble(),
-                double.parse(sparkline[i]),
-              ));
+          for (var coin in coins) {
+            String symbol = coin['symbol'];
+            List<dynamic> sparkline = coin['sparkline'];
+
+            List<FlSpot> points = [];
+            for (int i = 0; i < sparkline.length; i++) {
+              if (sparkline[i] != null) {
+                points.add(FlSpot(
+                  i.toDouble(),
+                  double.parse(sparkline[i]),
+                ));
+              }
             }
+
+            history[symbol] = points;
           }
 
-          history[symbol] = points;
+          await prefs.setString(cacheKey, json.encode(history.map((key, value) =>
+              MapEntry(key, value.map((spot) =>
+              {'x': spot.x, 'y': spot.y}).toList()
+              ))
+          ));
+          await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+
+          await ApiKeyManager.incrementApiCalls();
+
+          setState(() {
+            cryptoHistory = history;
+            if (!history.containsKey(selectedCrypto)) {
+              selectedCrypto = history.keys.first;
+            }
+          });
+
+          success = true;
+          print('Successfully fetched historical data using API key ${i + 1}');
+          break;
+        } else if (response.statusCode == 429) { // Too Many Requests
+          print('API key ${i + 1} limit reached, trying next key');
+          currentApiKey = await ApiKeyManager.getNextViableKey();
+          continue;
+        } else {
+          throw Exception('Failed to load data: ${response.statusCode}');
         }
-
-        await prefs.setString(cacheKey, json.encode(history.map((key, value) =>
-            MapEntry(key, value.map((spot) =>
-            {'x': spot.x, 'y': spot.y}).toList()
-            ))
-        ));
-        await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-
-        setState(() {
-          cryptoHistory = history;
-          if (!history.containsKey(selectedCrypto)) {
-            selectedCrypto = history.keys.first;
-          }
-        });
-
-        print('Successfully fetched historical data');
-      } else {
-        print('Failed to load data: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        throw Exception('Failed to load crypto history');
+      } catch (e) {
+        print('Error with API key ${i + 1}: $e');
+        currentApiKey = await ApiKeyManager.getNextViableKey();
       }
-    } catch (e) {
-      print('Error fetching crypto history: $e');
-      rethrow;
+    }
+
+    if (!success) {
+      print('All API keys exhausted');
     }
   }
 }
