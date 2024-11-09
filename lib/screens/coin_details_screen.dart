@@ -286,7 +286,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         ),
                         SizedBox(height: 16),
                         TextFormField(
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
                           controller: _priceController,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(

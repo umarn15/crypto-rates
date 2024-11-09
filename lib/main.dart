@@ -45,25 +45,54 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
 
-  @override
-  void initState() {
-    super.initState();
+  Future<void> setupFCM() async {
+    NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
 
-    FirebaseMessaging.instance.getToken().then((String? token) async {
-      if (token != null) {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          await FirebaseFirestore.instance
-              .collection('Users')
-              .doc(user.uid)
-              .set({'fcmToken': token}, SetOptions(merge: true));
-        }
+    print('User granted permission: ${settings.authorizationStatus}');
+
+    String? token = await FirebaseMessaging.instance.getToken();
+    if (token != null) {
+      print('FCM Token: $token');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .set({'fcmToken': token}, SetOptions(merge: true));
+        print('Token saved to Firestore');
+      }
+    }
+
+    FirebaseMessaging.instance.onTokenRefresh.listen((String token) async {
+      print('FCM Token refreshed: $token');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .set({'fcmToken': token}, SetOptions(merge: true));
+        print('Refreshed token saved to Firestore');
       }
     });
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+      print('Message notification: ${message.notification?.title}');
+      print('Message notification: ${message.notification?.body}');
       NotificationHelper.handleRemoteMessage(message);
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    setupFCM();
   }
 
 

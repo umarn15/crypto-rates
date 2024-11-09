@@ -50,31 +50,52 @@ class NotificationHelper {
   }
 
   static Future<void> handleRemoteMessage(RemoteMessage message) async {
+    print('Handling remote message: ${message.messageId}');
+    print('Message data: ${message.data}');
+    print('Message notification: ${message.notification?.toMap()}');
+
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
 
-    if (notification != null) {
-      await _flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'price_alerts_channel',
-            'Price Alerts',
-            channelDescription: 'Notifications for cryptocurrency price alerts',
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: android?.smallIcon,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
+    try {
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation;
+      AndroidFlutterLocalNotificationsPlugin().createNotificationChannel(
+        AndroidNotificationChannel(
+          'price_alerts_channel',
+          'Price Alerts',
+          description: 'Notifications for cryptocurrency price alerts',
+          importance: Importance.high,
         ),
-        payload: message.data.toString(),
       );
+
+      if (notification != null) {
+        print('Showing local notification');
+        await _flutterLocalNotificationsPlugin.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              'price_alerts_channel',
+              'Price Alerts',
+              channelDescription: 'Notifications for cryptocurrency price alerts',
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: android?.smallIcon ?? '@mipmap/ic_launcher',
+            ),
+            iOS: const DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
+          ),
+          payload: message.data.toString(),
+        );
+        print('Local notification shown successfully');
+      }
+    } catch (e) {
+      print('Error showing notification: $e');
     }
   }
 
