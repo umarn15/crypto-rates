@@ -16,6 +16,7 @@ class _CryptoChartState extends State<CryptoChart> {
   Map<String, List<FlSpot>> cryptoHistory = {};
   String selectedCrypto = 'BTC';
   final timePeriod = '24h';
+  final Duration cacheValidDurationChart = const Duration(hours: 6);
 
   @override
   void initState() {
@@ -212,7 +213,7 @@ class _CryptoChartState extends State<CryptoChart> {
     final cachedTimestamp = prefs.getInt(timestampKey);
 
     if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
-      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
+      if (ignoreTimestamp || DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDurationChart.inMilliseconds) {
         setState(() {
           cryptoHistory = Map<String, List<FlSpot>>.from(
             json.decode(cachedData).map((key, value) => MapEntry(
