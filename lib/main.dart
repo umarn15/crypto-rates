@@ -9,17 +9,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:workmanager/workmanager.dart';
 
 import 'models/notification_helper.dart';
-
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    await CryptoHomeWidget.updatePriceData();
-    return Future.value(true);
-  });
-}
 
 void updateWidgetFromApp() async {
   await CryptoHomeWidget.updatePriceData();
@@ -38,16 +29,6 @@ void main () async {
   );
 
   await CryptoHomeWidget.initPlatformState();
-
-  await Workmanager().initialize(callbackDispatcher);
-  await Workmanager().registerPeriodicTask(
-    "cryptoUpdate",
-    "updateWidget",
-    frequency: Duration(minutes: 30),
-    constraints: Constraints(
-      networkType: NetworkType.connected,
-    ),
-  );
 
   await NotificationHelper.init();
 
