@@ -2,14 +2,28 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto_rates/firebase_options.dart';
 import 'package:crypto_rates/models/theme_data.dart';
 import 'package:crypto_rates/screens/crypto_list_screen.dart';
+import 'package:crypto_rates/widgets/home_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'models/notification_helper.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    await CryptoHomeWidget.updatePriceData();
+    return Future.value(true);
+  });
+}
+
+void updateWidgetFromApp() async {
+  await CryptoHomeWidget.updatePriceData();
+}
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
@@ -21,6 +35,18 @@ void main () async {
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await CryptoHomeWidget.initPlatformState();
+
+  await Workmanager().initialize(callbackDispatcher);
+  await Workmanager().registerPeriodicTask(
+    "cryptoUpdate",
+    "updateWidget",
+    frequency: Duration(minutes: 30),
+    constraints: Constraints(
+      networkType: NetworkType.connected,
+    ),
   );
 
   await NotificationHelper.init();
@@ -93,6 +119,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     setupFCM();
+    updateWidgetFromApp();
   }
 
 

@@ -1,0 +1,3 @@
+<resources>
+    <string name="widget_label">Crypto Prices</string>  <!-- This is what users will see in widget picker -->
+</resources>
