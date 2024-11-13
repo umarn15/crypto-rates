@@ -1,10 +1,8 @@
-
 import 'package:crypto_rates/models/rates_api_service.dart';
-
 import '../main.dart';
 
 class ApiKeyManager {
-  static List<String> _apiKeys = [apiKey, apiKey2, apiKey3, apiKey4];
+  static List<String> apiKeys = [apiKey, apiKey2, apiKey3, apiKey4, apiKey5, apiKey6, apiKey7, apiKey8];
   static int _currentKeyIndex = 0;
   static const String _lastUsedKeyIndexKey = 'last_used_key_index';
   static const String _apiCallsCountKey = 'api_calls_count';
@@ -12,7 +10,7 @@ class ApiKeyManager {
 
   static Future<String> getCurrentKey() async {
     _currentKeyIndex = prefs.getInt(_lastUsedKeyIndexKey) ?? 0;
-    return _apiKeys[_currentKeyIndex];
+    return apiKeys[_currentKeyIndex];
   }
 
   static Future<void> incrementApiCalls() async {
@@ -27,17 +25,17 @@ class ApiKeyManager {
     int currentCount = prefs.getInt(countKey) ?? 0;
 
     if (currentCount >= maxCallsPerKey) {
-      _currentKeyIndex = (_currentKeyIndex + 1) % _apiKeys.length;
+      _currentKeyIndex = (_currentKeyIndex + 1) % apiKeys.length;
       await prefs.setInt(_lastUsedKeyIndexKey, _currentKeyIndex);
 
       if (_currentKeyIndex == 0) {
-        for (int i = 0; i < _apiKeys.length; i++) {
+        for (int i = 0; i < apiKeys.length; i++) {
           await prefs.setInt('${_apiCallsCountKey}_$i', 0);
         }
       }
     }
 
-    return _apiKeys[_currentKeyIndex];
+    return apiKeys[_currentKeyIndex];
   }
 
   static Future<void> resetCountsIfMonthChanged() async {
@@ -51,7 +49,7 @@ class ApiKeyManager {
 
     final lastReset = DateTime.fromMillisecondsSinceEpoch(lastResetDate);
     if (lastReset.month != currentDate.month || lastReset.year != currentDate.year) {
-      for (int i = 0; i < _apiKeys.length; i++) {
+      for (int i = 0; i < apiKeys.length; i++) {
         await prefs.setInt('${_apiCallsCountKey}_$i', 0);
       }
       await prefs.setInt('last_reset_date', currentDate.millisecondsSinceEpoch);

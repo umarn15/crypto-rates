@@ -24,7 +24,11 @@ class ApiKeyManager {
     'coinranking2264141459929f24ef0a4a3d748c0b21c1c339fcf39d812e',
     'coinrankingc32b4b2d653cf963499c6689890169fa8d66ceff6cc50cdc',
     'coinrankingbb871484d985f3180feab40a152706b9e4330d958c0324e8',
-    'coinranking70c5e375563a0f68486836e7ef54ca77dae7c87e965c562e'
+    'coinranking70c5e375563a0f68486836e7ef54ca77dae7c87e965c562e',
+    'coinranking3573e070f92647d4f50b30950ab8ef6de6deaec29dc50b2b',
+    'coinrankingfdb5f14226dc1d8945d70d266c131fdff80f821bb005c790',
+    'coinranking5e9d8ff32da67df00d25ed82839a60263fba2d8f877160fc',
+    'coinranking9bde62eb8ec1e74b539bf169eeb265a8b9f8ab529c74b9a6'
   ];
 
   private static currentKeyIndex = 0;
@@ -270,7 +274,7 @@ async function processAlert(
 }
 
 export const checkPriceAlerts = functions.pubsub
-  .schedule('every 5 minutes')
+  .schedule('every 2 minutes')
   .onRun(async (context) => {
     try {
       const usersSnapshot = await db.collection('Users').get();

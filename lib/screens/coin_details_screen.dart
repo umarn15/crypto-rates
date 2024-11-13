@@ -1,14 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/alert_model.dart';
 import '../models/coin_model.dart';
+import '../models/api_key_manager.dart';
 
 class CoinDetailScreen extends StatefulWidget {
-  final Coin coin;
+  final Coin initialCoin;
 
-  CoinDetailScreen({required this.coin});
+  CoinDetailScreen({required this.initialCoin});
 
   @override
   _CoinDetailScreenState createState() => _CoinDetailScreenState();
@@ -22,18 +25,87 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
   final currentUser = FirebaseAuth.instance.currentUser;
 
   late Stream<QuerySnapshot> alertsStream;
+  late StreamController<Coin> _coinController;
+  Timer? _timer;
+  late Coin currentCoin;
 
   @override
   void initState() {
     super.initState();
+    currentCoin = widget.initialCoin;
+    _coinController = StreamController<Coin>.broadcast();
+    _initializeStreams();
+    _startRealtimeUpdates();
+  }
+
+  void _initializeStreams() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       alertsStream = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
           .collection('alerts')
-          .where('coinSymbol', isEqualTo: widget.coin.symbol)
+          .where('coinSymbol', isEqualTo: widget.initialCoin.symbol)
           .snapshots();
+    }
+  }
+
+  void _startRealtimeUpdates() {
+    fetchCoinData();
+
+    _timer = Timer.periodic(Duration(seconds: 2), (timer) {
+      fetchCoinData();
+    });
+  }
+
+  Future<void> fetchCoinData() async {
+    await ApiKeyManager.resetCountsIfMonthChanged();
+    String currentApiKey = await ApiKeyManager.getCurrentKey();
+    bool success = false;
+
+    for (int i = 0; i < 4; i++) {
+      try {
+        final url = Uri.parse('https://api.coinranking.com/v2/coins');
+        final response = await http.get(
+          url,
+          headers: {
+            'x-access-token': currentApiKey,
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final coinsData = data['data']['coins'] as List;
+
+          final coinData = coinsData.firstWhere(
+                (coin) => coin['symbol'] == widget.initialCoin.symbol,
+            orElse: () => null,
+          );
+
+          if (coinData != null) {
+            final updatedCoin = Coin.fromJson(coinData);
+            _coinController.add(updatedCoin);
+            setState(() {
+              currentCoin = updatedCoin;
+            });
+          }
+
+          await ApiKeyManager.incrementApiCalls();
+          success = true;
+          break;
+        } else if (response.statusCode == 429) {
+          currentApiKey = await ApiKeyManager.getNextViableKey();
+          continue;
+        } else {
+          throw Exception('Failed to load coin: ${response.statusCode}');
+        }
+      } catch (e) {
+        currentApiKey = await ApiKeyManager.getNextViableKey();
+      }
+    }
+
+    if (!success) {
+      print('All API keys exhausted');
     }
   }
 
@@ -59,12 +131,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
         final Map<String, dynamic> alertData = {
           'id': alertRef.id,
-          'coinId': widget.coin.symbol,
-          'coinSymbol': widget.coin.symbol,
+          'coinId': currentCoin.symbol,
+          'coinSymbol': currentCoin.symbol,
           'targetPrice': double.parse(_priceController.text),
           'condition': _selectedCondition!,
           'isEnabled': true,
-          'currentPrice': widget.coin.price,
+          'currentPrice': currentCoin.price,
           'createdAt': FieldValue.serverTimestamp(),
         };
 
@@ -72,9 +144,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'Alert set for ${widget.coin.symbol} at \$${_priceController.text}'
-            ),
+            content: Text('Alert set for ${currentCoin.symbol} at \$${_priceController.text}'),
           ),
         );
 
@@ -134,6 +204,8 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
+    _coinController.close();
     _priceController.dispose();
     super.dispose();
   }
@@ -141,247 +213,246 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.coin.name} (${widget.coin.symbol})'),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Text(
-                    '\$${widget.coin.price.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+        appBar: AppBar(
+          title: Text('${currentCoin.name} (${currentCoin.symbol})'),
+        ),
+        body: StreamBuilder<Coin>(
+            stream: _coinController.stream,
+            initialData: widget.initialCoin,
+            builder: (context, snapshot) {
+              final coin = snapshot.data ?? currentCoin;
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Text(
+                            '\$${coin.price.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                coin.change24h >= 0
+                                    ? Icons.arrow_upward
+                                    : Icons.arrow_downward,
+                                color: coin.change24h >= 0
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              Text(
+                                '${coin.change24h.toStringAsFixed(2)}%',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: coin.change24h >= 0
+                                      ? Colors.green
+                                      : Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        widget.coin.change24h >= 0
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward,
-                        color: widget.coin.change24h >= 0
-                            ? Colors.green
-                            : Colors.red,
-                      ),
-                      Text(
-                        '${widget.coin.change24h.toStringAsFixed(2)}%',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: widget.coin.change24h >= 0
-                              ? Colors.green
-                              : Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
 
-            // Stats Section
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Card(
-                color: cardColor,
-                elevation: 4,
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Statistics',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      _buildStatRow('Rank', '#${widget.coin.rank}'),
-                      _buildStatRow(
-                          'Market Cap',
-                          '\$${(widget.coin.marketCap / 1e9).toStringAsFixed(2)}B'
-                      ),
-                      // Add more stats as needed
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Card(
-                color: cardColor,
-                elevation: 4,
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Form(
-                    key: _alertFormKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Set Price Alert',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                    Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Card(
+                        color: cardColor,
+                        elevation: 4,
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Statistics',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              _buildStatRow('Rank', '#${coin.rank}'),
+                              _buildStatRow(
+                                  'Market Cap',
+                                  '\$${(coin.marketCap / 1e9).toStringAsFixed(2)}B'
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 18),
-                        DropdownButtonFormField<String>(
-                          dropdownColor: Colors.blueGrey.shade600,
-                          value: _selectedCondition,
-                          icon: Icon(Icons.arrow_drop_down, color: Colors.white,),
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white),
-                            ),
-                            disabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(8)),
-                            fillColor: Colors.transparent,
-                            focusColor: Colors.transparent,
-                            hoverColor: Colors.transparent,
-                            filled: true,
-                            labelText: 'Condition',
-                            labelStyle: TextStyle(
-                                color: Colors.grey.shade400
-                            ),
-                          ),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'above',
-                              child: Text('Price goes above'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'below',
-                              child: Text('Price goes below'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedCondition = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 16),
-                        TextFormField(
-                          controller: _priceController,
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white),
-                            ),
-                            disabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(8)
-                            ),
-                            errorStyle: TextStyle(
-                              color: Colors.red,
-                              fontSize: 14
-                            ),
-                            fillColor: Colors.transparent,
-                            focusColor: Colors.transparent,
-                            hoverColor: Colors.transparent,
-                            filled: true,
-                            labelText: 'Price in USD',
-                            labelStyle: TextStyle(
-                                color: Colors.grey.shade400
-                            ),
-                            prefixText: '\$ ',
-                            prefixStyle: TextStyle(color: Colors.grey.shade400),
-                          ),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a price';
-                            }
+                      ),
+                    ),
 
-                            final double? price = double.tryParse(value);
-                            if (price == null) {
-                              return 'Please enter a valid number';
-                            }
+                    Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Card(
+                        color: cardColor,
+                        elevation: 4,
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Form(
+                            key: _alertFormKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Set Price Alert',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 18),
+                                DropdownButtonFormField<String>(
+                                  dropdownColor: Colors.blueGrey.shade600,
+                                  value: _selectedCondition,
+                                  icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+                                  decoration: InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.white),
+                                    ),
+                                    disabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.grey.shade300),
+                                        borderRadius: BorderRadius.circular(8)
+                                    ),
+                                    fillColor: Colors.transparent,
+                                    focusColor: Colors.transparent,
+                                    hoverColor: Colors.transparent,
+                                    filled: true,
+                                    labelText: 'Condition',
+                                    labelStyle: TextStyle(color: Colors.grey.shade400),
+                                  ),
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: 'above',
+                                      child: Text('Price goes above'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'below',
+                                      child: Text('Price goes below'),
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedCondition = value;
+                                    });
+                                  },
+                                ),
+                                SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _priceController,
+                                  decoration: InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.white),
+                                    ),
+                                    disabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.grey.shade300),
+                                        borderRadius: BorderRadius.circular(8)
+                                    ),
+                                    errorStyle: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 14
+                                    ),
+                                    fillColor: Colors.transparent,
+                                    focusColor: Colors.transparent,
+                                    hoverColor: Colors.transparent,
+                                    filled: true,
+                                    labelText: 'Price in USD',
+                                    labelStyle: TextStyle(color: Colors.grey.shade400),
+                                    prefixText: '\$ ',
+                                    prefixStyle: TextStyle(color: Colors.grey.shade400),
+                                  ),
+                                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a price';
+                                    }
 
-                            if (_selectedCondition == 'below' && price >= widget.coin.price) {
-                              return 'Alert price must be below current price (${widget.coin.price.toStringAsFixed(2)})';
-                            }
+                                    final double? price = double.tryParse(value);
+                                    if (price == null) {
+                                      return 'Please enter a valid number';
+                                    }
 
-                            if (_selectedCondition == 'above' && price <= widget.coin.price) {
-                              return 'Alert price must be above current price (${widget.coin.price.toStringAsFixed(2)})';
-                            }
+                                    if (_selectedCondition == 'below' && price >= coin.price) {
+                                      return 'Alert price must be below current price (${coin.price.toStringAsFixed(2)})';
+                                    }
 
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.blueGrey.shade900,
-                            ),
-                            onPressed: () async {
-                              if(currentUser == null){
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.red,
-                                    content: Text(
-                                        'Error, You need to be logged in to set alerts'
+                                    if (_selectedCondition == 'above' && price <= coin.price) {
+                                      return 'Alert price must be above current price (${coin.price.toStringAsFixed(2)})';
+                                    }
+
+                                    return null;
+                                  },
+                                ),
+                                SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      backgroundColor: Colors.blueGrey.shade900,
+                                    ),
+                                    onPressed: () async {
+                                      if (currentUser == null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: Colors.red,
+                                            content: Text('Error: You need to be logged in to set alerts'),
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      if (_alertFormKey.currentState!.validate()) {
+                                        await _setAlert();
+                                      }
+                                    },
+                                    child: Text(
+                                      'Set Alert',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white
+                                      ),
                                     ),
                                   ),
-                                );
-                                return;
-                              }
-
-                              if (_alertFormKey.currentState!.validate()) {
-                                await _setAlert();
-                              }
-                            },
-                            child: Text(
-                              'Set Alert',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
 
             Padding(
               padding: EdgeInsets.all(12),
@@ -469,9 +540,8 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
+    ));
+    }));
   }
 
 

@@ -1,18 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:crypto_rates/Auth/login_screen.dart';
 import 'package:crypto_rates/models/user_model.dart';
-import 'package:crypto_rates/screens/crypto_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import '../main.dart';
 import '../models/api_key_manager.dart';
 import '../models/coin_model.dart';
-import '../models/rates_api_service.dart';
 import 'coin_details_screen.dart';
 
 class CryptoListScreen extends StatefulWidget {
+  const CryptoListScreen({Key? key}) : super(key: key);
+
   @override
   _CryptoListScreenState createState() => _CryptoListScreenState();
 }
@@ -20,59 +20,38 @@ class CryptoListScreen extends StatefulWidget {
 class _CryptoListScreenState extends State<CryptoListScreen> {
   List<Coin> coins = [];
   bool isLoading = true;
-  final String timestampKey = 'coins_timestamp';
-  final String coinsKey = 'cached_coins';
-  final String cacheKey = 'cache_key';
+  Timer? _timer;
+  late final StreamController<List<Coin>> _coinsController;
+  final DrawerContent _drawerContent = const DrawerContent();
 
   @override
   void initState() {
     super.initState();
-    initializeCache();
+    _coinsController = StreamController<List<Coin>>.broadcast();
+    _startRealtimeUpdates();
   }
 
-
-  Future<void> initializeCache() async {
-    await loadCachedData();
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _coinsController.close();
+    super.dispose();
   }
 
-  Future<void> loadCachedData({bool ignoreTimestamp = false}) async {
-    final cachedData = prefs.getString(coinsKey);
-    final cachedTimestamp = prefs.getInt(timestampKey);
-
-    if (cachedData != null && (ignoreTimestamp || cachedTimestamp != null)) {
-      if (ignoreTimestamp ||
-          DateTime.now().millisecondsSinceEpoch - cachedTimestamp! < cacheValidDuration.inMilliseconds) {
-        setState(() {
-          coins = (json.decode(cachedData) as List)
-              .map((coinJson) => Coin.fromCachedJson(coinJson))
-              .toList();
-          isLoading = false;
-        });
-        print('Got data from cache');
-        return;
-      }
-    }
-
-    try {
-      await fetchCoins();
-      print('Did not get data from cache - fetched new data');
-    } catch (e) {
-      print('Fetch failed, trying to load expired cache');
-      if (cachedData != null) {
-        await loadCachedData(ignoreTimestamp: true);
-      } else {
-        print('No cached data available');
-        setState(() => isLoading = false);
-      }
-    }
+  void _startRealtimeUpdates() {
+    fetchCoins();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      fetchCoins();
+    });
   }
 
   Future<void> fetchCoins() async {
     await ApiKeyManager.resetCountsIfMonthChanged();
     String currentApiKey = await ApiKeyManager.getCurrentKey();
     bool success = false;
+    List<String> _apiKeys = ApiKeyManager.apiKeys;
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _apiKeys.length; i++) {
       try {
         final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=20');
         final response = await http.get(
@@ -85,22 +64,17 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final coinsData = data['data']['coins'] as List;
-
           final newCoins = coinsData.map((coin) => Coin.fromJson(coin)).toList();
 
-          await prefs.setString(coinsKey, json.encode(
-              newCoins.map((coin) => coin.toJson()).toList()
-          ));
-          await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
-
           await ApiKeyManager.incrementApiCalls();
+          _coinsController.add(newCoins);
 
-          print('using $currentApiKey');
-
-          setState(() {
-            coins = newCoins;
-            isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              coins = newCoins;
+              isLoading = false;
+            });
+          }
 
           success = true;
           break;
@@ -116,10 +90,9 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
     }
 
     if (!success) {
-       print('All API keys exhausted');
+      print('All API keys exhausted');
     }
   }
-
 
   String formatPrice(double price) {
     if (price >= 1000000) {
@@ -141,121 +114,28 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    TextStyle style = TextStyle(color: Colors.white, fontSize: 17);
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cryptocurrency List'),
-        actions: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
-            child: IconButton(
-              icon: Icon(Icons.show_chart),
-              onPressed: (){
-                Navigator.of(context).push(MaterialPageRoute(builder: (context)
-                 => CryptoChart()));
-              }
-            ),
-          ),
-        ],
+        title: const Text('Cryptocurrency List'),
       ),
-      drawer: Drawer(
-        backgroundColor: Colors.blueGrey.shade900,
-        child: user == null?
-        DrawerHeader(
-            child: Center(
-          child: GestureDetector(
-              onTap: (){
-                Navigator.of(context).push(MaterialPageRoute(builder: (context)
-                => LoginScreen()));
-              },
-              child: Text('Sign In',
-                style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.white
-              ),)),
-        )) :
-        FutureBuilder<UserModel>(
-          future: getUserData(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
+      drawer: _drawerContent,
+      body: StreamBuilder<List<Coin>>(
+        stream: _coinsController.stream,
+        builder: (context, snapshot) {
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            if (snapshot.hasError || !snapshot.hasData) {
-              return const Center(
-                child: Text('Error loading user data'),
-              );
-            }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-            final userData = snapshot.data!;
+          final currentCoins = snapshot.data ?? coins;
 
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                UserAccountsDrawerHeader(
-                  accountName: Text(userData.name, style: style,),
-                  accountEmail: Text(userData.email, style: style,),
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: Colors.blueGrey,
-                    child: Text(
-                      userData.name[0].toUpperCase(),
-                      style: TextStyle(fontSize: 24, color: Colors.white),
-                    ),
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blueGrey.shade900,
-                  ),
-                ),
-                ListTile(
-                  leading: Icon(Icons.calendar_today, color: Colors.white,),
-                  title: Text('Joined', style: style,),
-                  subtitle: Text(
-                    userData.createdAt != null
-                        ? DateFormat('MMM d, yyyy').format(userData.createdAt!.toDate())
-                        : 'Not available',
-                        style: style,
-                  ),
-                ),
-                Divider(),
-                ListTile(
-                  leading: Icon(Icons.logout, color: Colors.white,),
-                  title: Text('Sign Out', style: style,),
-                  onTap: () async {
-                    showDialog(context: context, builder: (context){
-                       return AlertDialog(
-                         title: Text('Are you sure you want to Log out?',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),),
-                          actions: [
-                            TextButton(
-                                onPressed: (){
-                              Navigator.pop(context);
-                            }, child: Text('Cancel')),
-                            TextButton(onPressed: () async {
-                              await FirebaseAuth.instance.signOut();
-                              Navigator.of(context).push(MaterialPageRoute(builder: (context)
-                              => LoginScreen()));
-                            }, child: Text('Yes'))
-                          ],
-                       );
-                    });
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-            itemCount: coins.length,
+          return ListView.builder(
+            itemCount: currentCoins.length,
             itemBuilder: (context, index) {
-              final coin = coins[index];
+              final coin = currentCoins[index];
               return ListTile(
                 leading: Text(
                   '#${coin.rank}',
@@ -266,7 +146,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
                 ),
                 title: Text(
                   '${coin.name} (${coin.symbol})',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 subtitle: Text(
                   'Market Cap: ${formatMarketCap(coin.marketCap)}',
@@ -276,8 +156,10 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(formatPrice(coin.price),
-                     style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
+                    Text(
+                      formatPrice(coin.price),
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
                     Text(
                       '${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toStringAsFixed(2)}%',
                       style: TextStyle(
@@ -291,13 +173,134 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CoinDetailScreen(coin: coin),
+                      builder: (context) => CoinDetailScreen(initialCoin: coin),
                     ),
                   );
                 },
               );
             },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DrawerContent extends StatelessWidget {
+  const DrawerContent({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    const TextStyle style = TextStyle(color: Colors.white, fontSize: 17);
+
+    if (user == null) {
+      return Drawer(
+        backgroundColor: Colors.blueGrey.shade900,
+        child: DrawerHeader(
+          child: Center(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+              child: const Text(
+                'Sign In',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
+        ),
+      );
+    }
+
+    return Drawer(
+      backgroundColor: Colors.blueGrey.shade900,
+      child: FutureBuilder<UserModel>(
+        future: getUserData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(child: Text('Error loading user data'));
+          }
+
+          final userData = snapshot.data!;
+
+          return ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              UserAccountsDrawerHeader(
+                accountName: Text(userData.name, style: style),
+                accountEmail: Text(userData.email, style: style),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: Colors.blueGrey,
+                  child: Text(
+                    userData.name[0].toUpperCase(),
+                    style: const TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.shade900,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.calendar_today, color: Colors.white),
+                title: const Text('Joined', style: style),
+                subtitle: Text(
+                  userData.createdAt != null
+                      ? DateFormat('MMM d, yyyy').format(userData.createdAt!.toDate())
+                      : 'Not available',
+                  style: style,
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.white),
+                title: const Text('Sign Out', style: style),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text(
+                          'Are you sure you want to Log out?',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await FirebaseAuth.instance.signOut();
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                      (route) => false,
+                                );
+                              }
+                            },
+                            child: const Text('Yes'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
