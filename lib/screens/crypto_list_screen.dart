@@ -42,18 +42,18 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
 
   void _startRealtimeUpdates() {
     fetchCoins();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
       fetchCoins();
     });
   }
 
   Future<void> fetchCoins() async {
     await ApiKeyManager.resetCountsIfMonthChanged();
-    String currentApiKey = await ApiKeyManager.getCurrentKey();
     bool success = false;
-    List<String> _apiKeys = ApiKeyManager.apiKeys;
+    int attempts = 0;
+    String currentApiKey = await ApiKeyManager.getCurrentKey();
 
-    for (int i = 0; i < _apiKeys.length; i++) {
+    while (!success && attempts < ApiKeyManager.apiKeys.length) {
       try {
         final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=20');
         final response = await http.get(
@@ -85,13 +85,12 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
             json.encode(widgetData),
           );
 
-          // Trigger widget update
           await HomeWidget.updateWidget(
             androidName: 'CryptoPriceWidget',
             iOSName: 'CryptoPriceWidget',
           );
 
-          print('Widget data updated: ${json.encode(widgetData)}'); // Debug print
+          print('Widget data updated: ${json.encode(widgetData)}');
 
           if (mounted) {
             setState(() {
@@ -101,21 +100,22 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           }
 
           success = true;
-          break;
         } else if (response.statusCode == 429) {
+          print('Rate limit reached for key $currentApiKey, trying next key');
           currentApiKey = await ApiKeyManager.getNextViableKey();
-          continue;
+          attempts++;
         } else {
           throw Exception('Failed to load coins: ${response.statusCode}');
         }
       } catch (e) {
-        print('Error in fetchCoins: $e'); // Debug print
+        print('Error in fetchCoins: $e');
         currentApiKey = await ApiKeyManager.getNextViableKey();
+        attempts++;
       }
     }
 
     if (!success) {
-      print('All API keys exhausted');
+      print('All API keys exhausted after $attempts attempts');
     }
   }
 

@@ -1,6 +1,8 @@
 import 'package:home_widget/home_widget.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../main.dart';
 import '../models/api_key_manager.dart';
 
 class CryptoHomeWidget {
@@ -16,6 +18,8 @@ class CryptoHomeWidget {
   // Update widget data
   static Future<void> updatePriceData() async {
     try {
+      prefs = await SharedPreferences.getInstance();
+
       await ApiKeyManager.resetCountsIfMonthChanged();
       String currentApiKey = await ApiKeyManager.getCurrentKey();
       bool success = false;

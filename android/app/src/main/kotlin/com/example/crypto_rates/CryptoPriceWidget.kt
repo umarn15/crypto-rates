@@ -1,8 +1,10 @@
 package com.example.crypto_rates
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
+import android.content.Intent
 import android.widget.RemoteViews
 import org.json.JSONArray
 import android.graphics.Color
@@ -27,6 +29,29 @@ private fun updateAppWidget(
     appWidgetId: Int
 ) {
     val views = RemoteViews(context.packageName, R.layout.crypto_price_widget)
+
+    // Add click intent to open app
+    val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    val openAppPendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        openAppIntent,
+        PendingIntent.FLAG_IMMUTABLE
+    )
+    views.setOnClickPendingIntent(R.id.widget_layout, openAppPendingIntent)
+
+    // Add refresh button click intent
+    val refreshIntent = Intent(context, CryptoPriceWidget::class.java).apply {
+        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
+    }
+    val refreshPendingIntent = PendingIntent.getBroadcast(
+        context,
+        appWidgetId,
+        refreshIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    views.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
 
     try {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)

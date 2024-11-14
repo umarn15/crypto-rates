@@ -60,10 +60,11 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   Future<void> fetchCoinData() async {
     await ApiKeyManager.resetCountsIfMonthChanged();
-    String currentApiKey = await ApiKeyManager.getCurrentKey();
     bool success = false;
+    int attempts = 0;
+    String currentApiKey = await ApiKeyManager.getCurrentKey();
 
-    for (int i = 0; i < 4; i++) {
+    while (!success && attempts < ApiKeyManager.apiKeys.length) {
       try {
         final url = Uri.parse('https://api.coinranking.com/v2/coins');
         final response = await http.get(
@@ -85,27 +86,44 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
           if (coinData != null) {
             final updatedCoin = Coin.fromJson(coinData);
             _coinController.add(updatedCoin);
-            setState(() {
-              currentCoin = updatedCoin;
-            });
-          }
+            if (mounted) {
+              setState(() {
+                currentCoin = updatedCoin;
+              });
+            }
 
-          await ApiKeyManager.incrementApiCalls();
-          success = true;
-          break;
+            await ApiKeyManager.incrementApiCalls();
+            success = true;
+          } else {
+            print('Coin ${widget.initialCoin.symbol} not found in response');
+            attempts++;
+          }
         } else if (response.statusCode == 429) {
+          print('Rate limit reached for key $currentApiKey, trying next key');
           currentApiKey = await ApiKeyManager.getNextViableKey();
-          continue;
+          attempts++;
         } else {
+          print('Failed request with status: ${response.statusCode}');
           throw Exception('Failed to load coin: ${response.statusCode}');
         }
       } catch (e) {
+        print('Error in fetchCoinData: $e');
         currentApiKey = await ApiKeyManager.getNextViableKey();
+        attempts++;
       }
     }
 
     if (!success) {
-      print('All API keys exhausted');
+      print('All API keys exhausted after $attempts attempts');
+      // Optionally show an error to the user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to update coin data. Please try again later.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

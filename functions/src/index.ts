@@ -28,22 +28,33 @@ class ApiKeyManager {
     'coinranking3573e070f92647d4f50b30950ab8ef6de6deaec29dc50b2b',
     'coinrankingfdb5f14226dc1d8945d70d266c131fdff80f821bb005c790',
     'coinranking5e9d8ff32da67df00d25ed82839a60263fba2d8f877160fc',
-    'coinranking9bde62eb8ec1e74b539bf169eeb265a8b9f8ab529c74b9a6'
+    'coinranking9bde62eb8ec1e74b539bf169eeb265a8b9f8ab529c74b9a6',
+    'coinranking1dd6e5b9cbc454a36295cff2f0710a5ee5f1e4b7b116fc58'
   ];
 
   private static currentKeyIndex = 0;
 
-  static async fetchWithKeyRotation(symbols: string[]): Promise<Map<string, number>> {
-    let lastError: Error | null = null;
+  private static getNextKey(): string {
+    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+    console.log(`Switching to API key ${this.currentKeyIndex + 1}`);
+    return this.apiKeys[this.currentKeyIndex];
+  }
 
-    for (let i = 0; i < this.apiKeys.length; i++) {
+  static async fetchWithKeyRotation(symbols: string[]): Promise<Map<string, number>> {
+    let attempts = 0;
+    let lastError: Error | null = null;
+    let currentKey = this.apiKeys[this.currentKeyIndex];
+
+    while (attempts < this.apiKeys.length) {
       try {
+        console.log(`Attempt ${attempts + 1} with key ${this.currentKeyIndex + 1}`);
         console.log(`Fetching prices for symbols:`, symbols);
 
         const response = await axios.get(
-          `https://api.coinranking.com/v2/coins`, {
+          `https://api.coinranking.com/v2/coins`,
+          {
             headers: {
-              'x-access-token': this.apiKeys[this.currentKeyIndex]
+              'x-access-token': currentKey
             },
             params: {
               symbols: symbols.join(','),
@@ -52,14 +63,11 @@ class ApiKeyManager {
           }
         );
 
-        console.log('Raw API Response:', JSON.stringify(response.data));
-
         if (!response.data?.data?.coins || !Array.isArray(response.data.data.coins)) {
           throw new Error('Invalid API response structure');
         }
 
         const priceMap = new Map<string, number>();
-
         response.data.data.coins.forEach((coin: any) => {
           if (coin && coin.symbol && coin.price) {
             const price = parseFloat(coin.price);
@@ -79,45 +87,157 @@ class ApiKeyManager {
         console.error(`API key ${this.currentKeyIndex + 1} failed:`, error.message);
 
         if (error.response?.status === 429) {
-          this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
-          console.log(`Switching to API key ${this.currentKeyIndex + 1}`);
+          currentKey = this.getNextKey();
+          attempts++;
           continue;
         }
-        throw error;
+
+        // For other errors, also try the next key
+        currentKey = this.getNextKey();
+        attempts++;
       }
     }
 
+    console.error(`All API keys exhausted after ${attempts} attempts`);
     throw lastError || new Error('All API keys failed');
   }
 
   static async fetchBTCPrice(): Promise<number> {
-    for (let i = 0; i < this.apiKeys.length; i++) {
+    let attempts = 0;
+    let currentKey = this.apiKeys[this.currentKeyIndex];
+
+    while (attempts < this.apiKeys.length) {
       try {
+        console.log(`BTC price attempt ${attempts + 1} with key ${this.currentKeyIndex + 1}`);
+
         const response = await axios.get(
-          'https://api.coinranking.com/v2/coin/Qwsogvtv82FCd/price', {
+          'https://api.coinranking.com/v2/coin/Qwsogvtv82FCd/price',
+          {
             headers: {
-              'x-access-token': this.apiKeys[this.currentKeyIndex]
+              'x-access-token': currentKey
             }
           }
         );
 
-        console.log('BTC API Response:', JSON.stringify(response.data));
-
         const price = parseFloat(response.data.data.price);
         if (!isNaN(price) && price > 0) {
-          console.log(`BTC price fetched separately: ${price}`);
+          console.log(`BTC price fetched successfully: ${price}`);
           return price;
         }
         throw new Error('Invalid BTC price received');
+
       } catch (error) {
         console.error(`Failed to fetch BTC price with key ${this.currentKeyIndex + 1}:`, error);
-        this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
-        continue;
+        currentKey = this.getNextKey();
+        attempts++;
       }
     }
+
+    console.error(`Failed to fetch BTC price after ${attempts} attempts`);
     throw new Error('Failed to fetch BTC price with all keys');
   }
 }
+
+// class ApiKeyManager {
+//   private static readonly apiKeys = [
+//     'coinranking2264141459929f24ef0a4a3d748c0b21c1c339fcf39d812e',
+//     'coinrankingc32b4b2d653cf963499c6689890169fa8d66ceff6cc50cdc',
+//     'coinrankingbb871484d985f3180feab40a152706b9e4330d958c0324e8',
+//     'coinranking70c5e375563a0f68486836e7ef54ca77dae7c87e965c562e',
+//     'coinranking3573e070f92647d4f50b30950ab8ef6de6deaec29dc50b2b',
+//     'coinrankingfdb5f14226dc1d8945d70d266c131fdff80f821bb005c790',
+//     'coinranking5e9d8ff32da67df00d25ed82839a60263fba2d8f877160fc',
+//     'coinranking9bde62eb8ec1e74b539bf169eeb265a8b9f8ab529c74b9a6',
+//     'coinranking1dd6e5b9cbc454a36295cff2f0710a5ee5f1e4b7b116fc58' // 9
+//   ];
+//
+//   private static currentKeyIndex = 0;
+//
+//   static async fetchWithKeyRotation(symbols: string[]): Promise<Map<string, number>> {
+//     let lastError: Error | null = null;
+//
+//     for (let i = 0; i < this.apiKeys.length; i++) {
+//       try {
+//         console.log(`Fetching prices for symbols:`, symbols);
+//
+//         const response = await axios.get(
+//           `https://api.coinranking.com/v2/coins`, {
+//             headers: {
+//               'x-access-token': this.apiKeys[this.currentKeyIndex]
+//             },
+//             params: {
+//               symbols: symbols.join(','),
+//               referenceCurrencyUuid: 'yhjMzLPhuIDl'
+//             }
+//           }
+//         );
+//
+//         console.log('Raw API Response:', JSON.stringify(response.data));
+//
+//         if (!response.data?.data?.coins || !Array.isArray(response.data.data.coins)) {
+//           throw new Error('Invalid API response structure');
+//         }
+//
+//         const priceMap = new Map<string, number>();
+//
+//         response.data.data.coins.forEach((coin: any) => {
+//           if (coin && coin.symbol && coin.price) {
+//             const price = parseFloat(coin.price);
+//             if (!isNaN(price) && price > 0) {
+//               priceMap.set(coin.symbol, price);
+//               console.log(`Parsed price for ${coin.symbol}: ${price}`);
+//             } else {
+//               console.error(`Invalid price format for ${coin.symbol}: ${price}`);
+//             }
+//           }
+//         });
+//
+//         return priceMap;
+//
+//       } catch (error: any) {
+//         lastError = error;
+//         console.error(`API key ${this.currentKeyIndex + 1} failed:`, error.message);
+//
+//         if (error.response?.status === 429) {
+//           this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+//           console.log(`Switching to API key ${this.currentKeyIndex + 1}`);
+//           continue;
+//         }
+//         throw error;
+//       }
+//     }
+//
+//     throw lastError || new Error('All API keys failed');
+//   }
+//
+//   static async fetchBTCPrice(): Promise<number> {
+//     for (let i = 0; i < this.apiKeys.length; i++) {
+//       try {
+//         const response = await axios.get(
+//           'https://api.coinranking.com/v2/coin/Qwsogvtv82FCd/price', {
+//             headers: {
+//               'x-access-token': this.apiKeys[this.currentKeyIndex]
+//             }
+//           }
+//         );
+//
+//         console.log('BTC API Response:', JSON.stringify(response.data));
+//
+//         const price = parseFloat(response.data.data.price);
+//         if (!isNaN(price) && price > 0) {
+//           console.log(`BTC price fetched separately: ${price}`);
+//           return price;
+//         }
+//         throw new Error('Invalid BTC price received');
+//       } catch (error) {
+//         console.error(`Failed to fetch BTC price with key ${this.currentKeyIndex + 1}:`, error);
+//         this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
+//         continue;
+//       }
+//     }
+//     throw new Error('Failed to fetch BTC price with all keys');
+//   }
+// }
 
 async function fetchCryptoPrices(symbols: string[]): Promise<Map<string, number>> {
   try {
