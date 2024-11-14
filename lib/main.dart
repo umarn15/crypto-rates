@@ -8,9 +8,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:workmanager/workmanager.dart';
 import 'models/notification_helper.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    await CryptoHomeWidget.updatePriceData();
+    return Future.value(true);
+  });
+}
 
 void updateWidgetFromApp() async {
   await CryptoHomeWidget.updatePriceData();
@@ -24,11 +33,27 @@ late SharedPreferences prefs;
 void main () async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await HomeWidget.setAppGroupId('group.com.example.crypto_rates');
+
+  await CryptoHomeWidget.initPlatformState();
+
+  // Initial update
+  await CryptoHomeWidget.updatePriceData();
+
+  // Set up periodic updates
+  await Workmanager().initialize(callbackDispatcher);
+  await Workmanager().registerPeriodicTask(
+    "cryptoUpdate",
+    "updateWidget",
+    frequency: Duration(minutes: 30),
+    constraints: Constraints(
+      networkType: NetworkType.connected,
+    ),
+  );
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  await CryptoHomeWidget.initPlatformState();
 
   await NotificationHelper.init();
 
@@ -99,8 +124,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    setupFCM();
-    updateWidgetFromApp();
+    CryptoHomeWidget.updatePriceData();
   }
 
 

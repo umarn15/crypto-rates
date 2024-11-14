@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:crypto_rates/Auth/login_screen.dart';
 import 'package:crypto_rates/models/user_model.dart';
+import 'package:crypto_rates/screens/saved_alerts_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../models/api_key_manager.dart';
@@ -69,6 +71,28 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           await ApiKeyManager.incrementApiCalls();
           _coinsController.add(newCoins);
 
+          // Prepare data for widget
+          List<Map<String, dynamic>> widgetData = newCoins.take(3).map((coin) {
+            return {
+              'symbol': coin.symbol,
+              'price': coin.price.toStringAsFixed(2),
+              'change': coin.change24h.toStringAsFixed(2),
+            };
+          }).toList();
+
+          await HomeWidget.saveWidgetData<String>(
+            'crypto_data',
+            json.encode(widgetData),
+          );
+
+          // Trigger widget update
+          await HomeWidget.updateWidget(
+            androidName: 'CryptoPriceWidget',
+            iOSName: 'CryptoPriceWidget',
+          );
+
+          print('Widget data updated: ${json.encode(widgetData)}'); // Debug print
+
           if (mounted) {
             setState(() {
               coins = newCoins;
@@ -85,6 +109,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           throw Exception('Failed to load coins: ${response.statusCode}');
         }
       } catch (e) {
+        print('Error in fetchCoins: $e'); // Debug print
         currentApiKey = await ApiKeyManager.getNextViableKey();
       }
     }
@@ -93,6 +118,55 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
       print('All API keys exhausted');
     }
   }
+
+  // Future<void> fetchCoins() async {
+  //   await ApiKeyManager.resetCountsIfMonthChanged();
+  //   String currentApiKey = await ApiKeyManager.getCurrentKey();
+  //   bool success = false;
+  //   List<String> _apiKeys = ApiKeyManager.apiKeys;
+  //
+  //   for (int i = 0; i < _apiKeys.length; i++) {
+  //     try {
+  //       final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=20');
+  //       final response = await http.get(
+  //         url,
+  //         headers: {
+  //           'x-access-token': currentApiKey,
+  //         },
+  //       );
+  //
+  //       if (response.statusCode == 200) {
+  //         final data = jsonDecode(response.body);
+  //         final coinsData = data['data']['coins'] as List;
+  //         final newCoins = coinsData.map((coin) => Coin.fromJson(coin)).toList();
+  //
+  //         await ApiKeyManager.incrementApiCalls();
+  //         _coinsController.add(newCoins);
+  //
+  //         if (mounted) {
+  //           setState(() {
+  //             coins = newCoins;
+  //             isLoading = false;
+  //           });
+  //         }
+  //
+  //         success = true;
+  //         break;
+  //       } else if (response.statusCode == 429) {
+  //         currentApiKey = await ApiKeyManager.getNextViableKey();
+  //         continue;
+  //       } else {
+  //         throw Exception('Failed to load coins: ${response.statusCode}');
+  //       }
+  //     } catch (e) {
+  //       currentApiKey = await ApiKeyManager.getNextViableKey();
+  //     }
+  //   }
+  //
+  //   if (!success) {
+  //     print('All API keys exhausted');
+  //   }
+  // }
 
   String formatPrice(double price) {
     if (price >= 1000000) {
@@ -117,6 +191,17 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cryptocurrency List'),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: IconButton(onPressed: (){
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SavedAlerts()),
+              );
+            }, icon: Icon(Icons.favorite)),
+          )
+        ]
       ),
       drawer: _drawerContent,
       body: StreamBuilder<List<Coin>>(
