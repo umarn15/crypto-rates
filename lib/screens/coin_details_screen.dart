@@ -436,8 +436,10 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             ),
 
             // Saved Alerts Card
-            Padding(
-              padding: EdgeInsets.all(12),
+         Padding(
+           padding: EdgeInsets.all(12),
+           child: Container(
+            width: double.infinity,
               child: Card(
                 color: cardColor,
                 elevation: 4,
@@ -502,7 +504,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                   ),
                 ),
               ),
-            ),
+           )),
           ],
         ),
       ),
