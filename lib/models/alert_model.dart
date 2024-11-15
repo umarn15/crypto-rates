@@ -9,6 +9,7 @@ class Alert {
   final bool isEnabled;
   final double currentPrice;
   final Timestamp? createdAt;
+  final Timestamp? triggeredAt;
 
   Alert({
     required this.id,
@@ -19,6 +20,7 @@ class Alert {
     required this.isEnabled,
     required this.currentPrice,
     this.createdAt,
+    this.triggeredAt
   });
 
   Map<String, dynamic> toMap() {
@@ -44,6 +46,8 @@ class Alert {
       currentPrice: map['currentPrice'] ?? 0.0,
       createdAt: map['createdAt'] is Timestamp
           ? map['createdAt'] : Timestamp.now(),
+      triggeredAt: map['triggeredAt'] is Timestamp
+          ? map['triggeredAt'] : Timestamp.now(),
     );
   }
 }
