@@ -112,11 +112,11 @@ class SavedAlerts extends StatelessWidget {
               'Target: \$${alert.targetPrice.toStringAsFixed(2)} (${alert.condition.capitalize()})',
               style: subtitleStyle,
             ),
-            SizedBox(height: 4),
-            Text(
-              'Current: \$${alert.currentPrice.toStringAsFixed(2)}',
-              style: subtitleStyle,
-            ),
+            // SizedBox(height: 4),
+            // Text(
+            //   'Current: \$${alert.currentPrice.toStringAsFixed(2)}',
+            //   style: subtitleStyle,
+            // ),
             // if (alert.triggeredAt != null) ...[
             //   SizedBox(height: 4),
             //   Text(

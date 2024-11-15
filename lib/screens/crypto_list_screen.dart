@@ -1,4 +1,3 @@
-// lib/screens/crypto_list_screen.dart
 import 'dart:async';
 import 'dart:convert';
 import 'package:crypto_rates/Auth/login_screen.dart';
