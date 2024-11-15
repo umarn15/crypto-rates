@@ -117,17 +117,17 @@ class SavedAlerts extends StatelessWidget {
               'Current: \$${alert.currentPrice.toStringAsFixed(2)}',
               style: subtitleStyle,
             ),
-            if (alert.triggeredAt != null) ...[
-              SizedBox(height: 4),
-              Text(
-                'Triggered at: ${alert.triggeredAt!.toDate().toString()}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[400],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
+            // if (alert.triggeredAt != null) ...[
+            //   SizedBox(height: 4),
+            //   Text(
+            //     'Triggered at: ${alert.triggeredAt!.toDate().toString()}',
+            //     style: TextStyle(
+            //       fontSize: 14,
+            //       color: Colors.grey[400],
+            //       fontStyle: FontStyle.italic,
+            //     ),
+            //   ),
+            // ],
           ],
         ),
       ),

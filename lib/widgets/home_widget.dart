@@ -38,7 +38,6 @@ class CryptoHomeWidget {
             final data = jsonDecode(response.body);
             final coinsData = data['data']['coins'] as List;
 
-            // Prepare data for widget
             List<Map<String, dynamic>> widgetData = coinsData.take(3).map((coin) {
               return {
                 'symbol': coin['symbol'],
@@ -47,18 +46,19 @@ class CryptoHomeWidget {
               };
             }).toList();
 
-            // Save data for widget
-            await HomeWidget.saveWidgetData<String>(
-              'crypto_data',
-              json.encode(widgetData),
-            );
+            final String encodedData = json.encode(widgetData);
+            print('Saving widget data: $encodedData');
 
-            // Trigger widget update
+            // Save to both HomeWidget and SharedPreferences
+            await HomeWidget.saveWidgetData<String>('crypto_data', encodedData);
+            await prefs.setString('crypto_data', encodedData);
+
             await HomeWidget.updateWidget(
               androidName: androidWidgetName,
               iOSName: iOSWidgetName,
             );
 
+            print('Widget data saved and update triggered');
             await ApiKeyManager.incrementApiCalls();
             success = true;
             break;
@@ -67,6 +67,7 @@ class CryptoHomeWidget {
             continue;
           }
         } catch (e) {
+          print('Error in API call: $e');
           currentApiKey = await ApiKeyManager.getNextViableKey();
         }
       }
