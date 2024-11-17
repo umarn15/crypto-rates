@@ -28,10 +28,19 @@ class CryptoPriceWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
-            Log.d(TAG, "Received update request")
+            // Force an immediate update when refresh is clicked
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val thisWidget = ComponentName(context, CryptoPriceWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+
+            // Trigger the Flutter method to update data
+            val flutterIntent = Intent(context, MainActivity::class.java).apply {
+                action = "updateWidget"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(flutterIntent)
+
+            // Update the widget UI
             onUpdate(context, appWidgetManager, appWidgetIds)
         }
     }

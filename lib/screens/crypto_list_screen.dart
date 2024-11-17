@@ -62,14 +62,8 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
 
   void _setupWebSocket() {
     try {
-      // Close existing connection if any
       _channel?.sink.close();
 
-      // Get symbols for WebSocket subscription
-      final symbols = coins.map((coin) => coin.symbol).toList();
-      print('Setting up WebSocket for symbols: $symbols');
-
-      // Connect to WebSocket
       _channel = WebSocketChannel.connect(
           Uri.parse('wss://stream.binance.com:9443/ws/!ticker@arr')
       );
@@ -89,12 +83,16 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
               if (coinIndex != -1) {
                 final double newPrice = double.parse(ticker['c']);
                 final double newChange = double.parse(ticker['P']);
+                final double volume = double.parse(ticker['q']); // Quote volume
+                final double marketCap = newPrice * volume;
 
                 if (coins[coinIndex].price != newPrice ||
-                    coins[coinIndex].change24h != newChange) {
+                    coins[coinIndex].change24h != newChange ||
+                    coins[coinIndex].marketCap != marketCap) {
                   coins[coinIndex] = coins[coinIndex].copyWith(
                     price: newPrice,
                     change24h: newChange,
+                    marketCap: marketCap,
                   );
                   updatedAny = true;
                 }
@@ -102,6 +100,14 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
             }
 
             if (updatedAny && mounted) {
+              // Sort again by market cap
+              coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
+
+              // Update ranks
+              for (int i = 0; i < coins.length; i++) {
+                coins[i] = coins[i].copyWith(rank: i + 1);
+              }
+
               setState(() {});
               _coinsController.add(coins);
               _updateWidget();
@@ -112,12 +118,10 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
         },
         onError: (error) {
           print('WebSocket Error: $error');
-          // Reconnect after error
           Future.delayed(Duration(seconds: 5), _setupWebSocket);
         },
         onDone: () {
           print('WebSocket connection closed');
-          // Reconnect when connection closes
           Future.delayed(Duration(seconds: 5), _setupWebSocket);
         },
       );

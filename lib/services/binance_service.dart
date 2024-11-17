@@ -30,6 +30,7 @@ class BinanceService {
     'ICP': 'Internet Computer',
   };
 
+  // In BinanceService class
   static Future<List<Coin>> getInitialData() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/ticker/24hr'));
@@ -39,24 +40,34 @@ class BinanceService {
         List<Coin> coins = [];
         int rank = 1;
 
-        for (var item in data) {
-          if (item['symbol'].toString().endsWith('USDT')) {
-            final symbol = item['symbol'].toString().replaceAll('USDT', '');
-            if (_symbolToName.containsKey(symbol)) {
-              coins.add(Coin(
-                symbol: symbol,
-                name: _symbolToName[symbol]!,
-                price: double.parse(item['lastPrice']),
-                change24h: double.parse(item['priceChangePercent']),
-                marketCap: double.parse(item['quoteVolume']),
-                rank: rank++,
-              ));
-            }
+        // First, filter USDT pairs and create coins
+        data.where((item) => item['symbol'].toString().endsWith('USDT')).forEach((item) {
+          final symbol = item['symbol'].toString().replaceAll('USDT', '');
+          if (_symbolToName.containsKey(symbol)) {
+            final price = double.parse(item['lastPrice']);
+            final volume = double.parse(item['quoteVolume']); // USDT volume
+            final marketCap = price * volume; // Approximate market cap using volume
+
+            coins.add(Coin(
+              symbol: symbol,
+              name: _symbolToName[symbol]!,
+              price: price,
+              change24h: double.parse(item['priceChangePercent']),
+              marketCap: marketCap,
+              rank: 0, // Will set after sorting
+            ));
           }
+        });
+
+        // Sort by market cap
+        coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
+
+        // Assign ranks after sorting
+        for (int i = 0; i < coins.length; i++) {
+          coins[i] = coins[i].copyWith(rank: i + 1);
         }
 
-        // Sort by volume/market cap
-        coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
+        // Take top 20
         return coins.take(20).toList();
       } else {
         throw Exception('Failed to load data');

@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
-import '../models/api_key_manager.dart';
 
 class CryptoHomeWidget {
   static const String appGroupId = 'com.example.crypto_rates';
   static const String androidWidgetName = 'CryptoPriceWidget';
   static const String iOSWidgetName = 'CryptoPriceWidget';
+
+  // Top cryptocurrencies to display
+  static const List<String> TOP_COINS = ['BTC', 'ETH', 'BNB'];
 
   // Initialize the widget
   static Future<void> initPlatformState() async {
@@ -20,63 +22,70 @@ class CryptoHomeWidget {
     try {
       prefs = await SharedPreferences.getInstance();
 
-      await ApiKeyManager.resetCountsIfMonthChanged();
-      String currentApiKey = await ApiKeyManager.getCurrentKey();
-      bool success = false;
+      // Fetch ticker data from Binance
+      final url = Uri.parse('https://api.binance.com/api/v3/ticker/24hr');
+      final response = await http.get(url);
 
-      for (int i = 0; i < ApiKeyManager.apiKeys.length; i++) {
-        try {
-          final url = Uri.parse('https://api.coinranking.com/v2/coins?limit=3');
-          final response = await http.get(
-            url,
-            headers: {
-              'x-access-token': currentApiKey,
-            },
+      if (response.statusCode == 200) {
+        final List<dynamic> tickers = jsonDecode(response.body);
+        List<Map<String, dynamic>> widgetData = [];
+
+        // Process data for each top coin
+        for (String symbol in TOP_COINS) {
+          final ticker = tickers.firstWhere(
+                (t) => t['symbol'] == '${symbol}USDT',
+            orElse: () => null,
           );
 
-          if (response.statusCode == 200) {
-            final data = jsonDecode(response.body);
-            final coinsData = data['data']['coins'] as List;
+          if (ticker != null) {
+            try {
+              final price = double.parse(ticker['lastPrice']);
+              final change = double.parse(ticker['priceChangePercent']);
 
-            List<Map<String, dynamic>> widgetData = coinsData.take(3).map((coin) {
-              return {
-                'symbol': coin['symbol'],
-                'price': double.parse(coin['price']).toStringAsFixed(2),
-                'change': double.parse(coin['change']).toStringAsFixed(2),
-              };
-            }).toList();
+              widgetData.add({
+                'symbol': symbol,
+                'price': price.toStringAsFixed(2),
+                'change': change.toStringAsFixed(2),
+              });
 
-            final String encodedData = json.encode(widgetData);
-            print('Saving widget data: $encodedData');
-
-            // Save to both HomeWidget and SharedPreferences
-            await HomeWidget.saveWidgetData<String>('crypto_data', encodedData);
-            await prefs.setString('crypto_data', encodedData);
-
-            await HomeWidget.updateWidget(
-              androidName: androidWidgetName,
-              iOSName: iOSWidgetName,
-            );
-
-            print('Widget data saved and update triggered');
-            await ApiKeyManager.incrementApiCalls();
-            success = true;
-            break;
-          } else if (response.statusCode == 429) {
-            currentApiKey = await ApiKeyManager.getNextViableKey();
-            continue;
+              print('Processed ${symbol}: Price: $price, Change: $change');
+            } catch (e) {
+              print('Error processing data for $symbol: $e');
+            }
           }
-        } catch (e) {
-          print('Error in API call: $e');
-          currentApiKey = await ApiKeyManager.getNextViableKey();
         }
-      }
 
-      if (!success) {
-        print('Failed to update widget: All API keys exhausted');
+        if (widgetData.isNotEmpty) {
+          final String encodedData = json.encode(widgetData);
+          print('Saving widget data: $encodedData');
+
+          // Save to both HomeWidget and SharedPreferences
+          await HomeWidget.saveWidgetData<String>('crypto_data', encodedData);
+          await prefs.setString('crypto_data', encodedData);
+
+          // Update the widget
+          await HomeWidget.updateWidget(
+            androidName: androidWidgetName,
+            iOSName: iOSWidgetName,
+          );
+
+          print('Widget data saved and update triggered');
+        } else {
+          print('No valid data to update widget');
+        }
+      } else {
+        throw Exception('Failed to fetch data: ${response.statusCode}');
       }
     } catch (e) {
       print('Error updating widget: $e');
     }
+  }
+
+  // Helper method to get WebSocket for real-time updates
+  static Uri getWebSocketUrl() {
+    final symbols = TOP_COINS.map((symbol) =>
+    '${symbol.toLowerCase()}usdt@ticker'
+    ).join('/');
+    return Uri.parse('wss://stream.binance.com:9443/ws/$symbols');
   }
 }
