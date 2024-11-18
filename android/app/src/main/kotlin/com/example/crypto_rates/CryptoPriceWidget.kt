@@ -27,21 +27,23 @@ class CryptoPriceWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == AppWidgetManager.ACTION_APPWIDGET_UPDATE) {
-            // Force an immediate update when refresh is clicked
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val thisWidget = ComponentName(context, CryptoPriceWidget::class.java)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
 
-            // Trigger the Flutter method to update data
-            val flutterIntent = Intent(context, MainActivity::class.java).apply {
-                action = "updateWidget"
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        when (intent.action) {
+            AppWidgetManager.ACTION_APPWIDGET_UPDATE -> {
+                // Only update data if it's from the refresh button
+                if (intent.hasExtra("fromRefreshButton")) {
+                    val appWidgetManager = AppWidgetManager.getInstance(context)
+                    val thisWidget = ComponentName(context, CryptoPriceWidget::class.java)
+                    val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+                    onUpdate(context, appWidgetManager, appWidgetIds)
+                }
             }
-            context.startActivity(flutterIntent)
-
-            // Update the widget UI
-            onUpdate(context, appWidgetManager, appWidgetIds)
+            "OPEN_APP" -> {
+                // Launch app
+                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                launchIntent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                context.startActivity(launchIntent)
+            }
         }
     }
 }
@@ -54,18 +56,21 @@ private fun updateAppWidget(
     val views = RemoteViews(context.packageName, R.layout.crypto_price_widget)
 
     // Add click intent to open app
-    val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-    val openAppPendingIntent = PendingIntent.getActivity(
+    val openAppIntent = Intent(context, CryptoPriceWidget::class.java).apply {
+        action = "OPEN_APP"
+    }
+    val openAppPendingIntent = PendingIntent.getBroadcast(
         context,
         0,
         openAppIntent,
-        PendingIntent.FLAG_IMMUTABLE
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
     views.setOnClickPendingIntent(R.id.widget_layout, openAppPendingIntent)
 
     // Add refresh button click intent
     val refreshIntent = Intent(context, CryptoPriceWidget::class.java).apply {
         action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+        putExtra("fromRefreshButton", true)
         putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
     }
     val refreshPendingIntent = PendingIntent.getBroadcast(

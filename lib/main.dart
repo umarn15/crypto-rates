@@ -37,15 +37,13 @@ void main () async {
 
   await CryptoHomeWidget.initPlatformState();
 
-  // Initial update
   await CryptoHomeWidget.updatePriceData();
 
-  // Set up periodic updates
   await Workmanager().initialize(callbackDispatcher);
   await Workmanager().registerPeriodicTask(
     "cryptoUpdate",
     "updateWidget",
-    frequency: Duration(minutes: 30),
+    frequency: Duration(minutes: 15),
     constraints: Constraints(
       networkType: NetworkType.connected,
     ),

@@ -351,4 +351,3 @@ export const checkPriceAlerts = functions.pubsub
       throw error;
     }
   });
-
