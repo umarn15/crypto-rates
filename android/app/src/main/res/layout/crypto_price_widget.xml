@@ -8,22 +8,13 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Title Row with Refresh Button -->
+    <!-- Refresh Button -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="12dp">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Crypto Prices"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+        android:gravity="end"
+        android:layout_marginBottom="10dp"> <!-- Reduced bottom margin -->
 
         <ImageButton
             android:id="@+id/refresh_button"
@@ -31,7 +22,7 @@
             android:layout_height="28dp"
             android:src="@drawable/ic_refresh"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="4dp"
+            android:padding="6dp"
             android:tint="#FFFFFF"
             tools:ignore="NewApi" />
     </LinearLayout>
@@ -41,7 +32,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp"> <!-- Increased padding for better spacing -->
+        android:padding="6dp"> <!-- Reduced vertical padding -->
 
         <TextView
             android:id="@+id/symbol1"
@@ -49,7 +40,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" /> <!-- Increased text size -->
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" /> <!-- Styled text -->
 
         <TextView
             android:id="@+id/price1"
@@ -57,13 +50,17 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="12dp"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" /> <!-- Increased text size -->
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" /> <!-- Styled text -->
 
         <TextView
             android:id="@+id/change1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp" /> <!-- Increased text size -->
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" /> <!-- Styled text -->
     </LinearLayout>
 
     <!-- Second Row -->
@@ -71,7 +68,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:padding="6dp"> <!-- Reduced vertical padding -->
 
         <TextView
             android:id="@+id/symbol2"
@@ -79,7 +76,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
 
         <TextView
             android:id="@+id/price2"
@@ -87,13 +86,17 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="12dp"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
 
         <TextView
             android:id="@+id/change2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
     </LinearLayout>
 
     <!-- Third Row -->
@@ -101,7 +104,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:padding="6dp"> <!-- Reduced vertical padding -->
 
         <TextView
             android:id="@+id/symbol3"
@@ -109,7 +112,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
 
         <TextView
             android:id="@+id/price3"
@@ -117,13 +122,17 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="12dp"
             android:textColor="#FFFFFF"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
 
         <TextView
             android:id="@+id/change3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
     </LinearLayout>
 
 </LinearLayout>
