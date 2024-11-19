@@ -38,7 +38,6 @@ class BinanceService {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         List<Coin> coins = [];
-        int rank = 1;
 
         // First, filter USDT pairs and create coins
         data.where((item) => item['symbol'].toString().endsWith('USDT')).forEach((item) {
@@ -60,7 +59,7 @@ class BinanceService {
         });
 
         // Sort by market cap
-        coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
+       coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
 
         // Assign ranks after sorting
         for (int i = 0; i < coins.length; i++) {
