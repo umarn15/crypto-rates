@@ -8,14 +8,25 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Refresh Button -->
+    <!-- Header Row with Last Updated and Refresh Button -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end"
-        android:layout_marginBottom="10dp"> <!-- Reduced bottom margin -->
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
 
+        <!-- Last Updated Text -->
+        <TextView
+            android:id="@+id/last_updated"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-condensed" />
+
+        <!-- Refresh Button -->
         <ImageButton
             android:id="@+id/refresh_button"
             android:layout_width="28dp"
@@ -32,7 +43,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="6dp"> <!-- Reduced vertical padding -->
+        android:padding="6dp">
 
         <TextView
             android:id="@+id/symbol1"
@@ -42,7 +53,7 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:fontFamily="sans-serif-condensed" /> <!-- Styled text -->
+            android:fontFamily="sans-serif-condensed" />
 
         <TextView
             android:id="@+id/price1"
@@ -52,7 +63,7 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:fontFamily="sans-serif-condensed" /> <!-- Styled text -->
+            android:fontFamily="sans-serif-condensed" />
 
         <TextView
             android:id="@+id/change1"
@@ -60,7 +71,7 @@
             android:layout_height="wrap_content"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:fontFamily="sans-serif-condensed" /> <!-- Styled text -->
+            android:fontFamily="sans-serif-condensed" />
     </LinearLayout>
 
     <!-- Second Row -->
@@ -68,7 +79,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="6dp"> <!-- Reduced vertical padding -->
+        android:padding="6dp">
 
         <TextView
             android:id="@+id/symbol2"
@@ -104,7 +115,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="6dp"> <!-- Reduced vertical padding -->
+        android:padding="6dp">
 
         <TextView
             android:id="@+id/symbol3"
@@ -130,7 +141,7 @@
             android:id="@+id/change3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-condensed" />
     </LinearLayout>

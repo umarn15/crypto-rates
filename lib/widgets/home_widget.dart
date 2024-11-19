@@ -57,13 +57,13 @@ class CryptoHomeWidget {
 
         if (widgetData.isNotEmpty) {
           final String encodedData = json.encode(widgetData);
-          print('Saving widget data: $encodedData');
+          final String currentTime = DateTime.now().toLocal().toString();
 
-          // Save to both HomeWidget and SharedPreferences
           await HomeWidget.saveWidgetData<String>('crypto_data', encodedData);
+          await HomeWidget.saveWidgetData<String>('last_updated', currentTime);
           await prefs.setString('crypto_data', encodedData);
+          await prefs.setString('last_updated', currentTime);
 
-          // Update the widget
           await HomeWidget.updateWidget(
             androidName: androidWidgetName,
             iOSName: iOSWidgetName,
