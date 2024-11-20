@@ -436,75 +436,75 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
             ),
 
             // Saved Alerts Card
-         Padding(
-           padding: EdgeInsets.all(12),
-           child: Container(
-            width: double.infinity,
-              child: Card(
-                color: cardColor,
-                elevation: 4,
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Saved Alerts',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: currentUser != null ? alertsStream : null,
-                        builder: (context, snapshot) {
-                          if (currentUser == null) {
-                            return Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                'Login to see your alerts',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            );
-                          }
+            Padding(
+                padding: EdgeInsets.all(12),
+                child: Container(
+                  width: double.infinity,
+                  child: Card(
+                    color: cardColor,
+                    elevation: 4,
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Saved Alerts',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: currentUser != null ? alertsStream : null,
+                            builder: (context, snapshot) {
+                              if (currentUser == null) {
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Text(
+                                    'Login to see your alerts',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                );
+                              }
 
-                          if (snapshot.hasError) {
-                            return Text('Error: ${snapshot.error}');
-                          }
+                              if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              }
 
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return Center(child: CircularProgressIndicator());
-                          }
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return Center(child: CircularProgressIndicator());
+                              }
 
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                'No active alerts',
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            );
-                          }
+                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Text(
+                                    'No active alerts',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                );
+                              }
 
-                          return Column(
-                            children: snapshot.data!.docs.map((doc) {
-                              final alert = Alert.fromMap(doc.data() as Map<String, dynamic>);
-                              return _buildAlertItem(
-                                '${alert.condition.capitalize()} \$${alert.targetPrice.toStringAsFixed(2)}',
-                                alert.isEnabled,
-                                onDelete: () => _deleteAlert(alert.id),
-                                onToggle: () => _toggleAlert(alert),
+                              return Column(
+                                children: snapshot.data!.docs.map((doc) {
+                                  final alert = Alert.fromMap(doc.data() as Map<String, dynamic>);
+                                  return _buildAlertItem(
+                                    '${alert.condition.capitalize()} \$${alert.targetPrice.toStringAsFixed(2)}',
+                                    alert.isEnabled,
+                                    onDelete: () => _deleteAlert(alert.id),
+                                    onToggle: () => _toggleAlert(alert),
+                                  );
+                                }).toList(),
                               );
-                            }).toList(),
-                          );
-                        },
+                            },
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-           )),
+                )),
           ],
         ),
       ),
