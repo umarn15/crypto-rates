@@ -85,14 +85,12 @@ class BinanceService {
     ).toList();
 
     final url = Uri.parse('$websocketUrl/stream?streams=${streams.join("/")}');
-    print('Connecting to WebSocket: $url');
     return WebSocketChannel.connect(url);
   }
 
   static WebSocketChannel getSingleCoinWebSocket(String symbol) {
     final streamName = '${symbol.toLowerCase()}usdt@ticker';
     final url = Uri.parse('$websocketUrl/$streamName');
-    print('Connecting to single coin WebSocket: $url');
     return WebSocketChannel.connect(url);
   }
 }

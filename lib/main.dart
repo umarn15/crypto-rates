@@ -35,6 +35,8 @@ void main () async {
 
   await HomeWidget.setAppGroupId('group.com.example.crypto_rates');
 
+  HomeWidget.registerInteractivityCallback(backgroundCallback);
+
   await CryptoHomeWidget.initPlatformState();
 
   await CryptoHomeWidget.updatePriceData();
@@ -134,5 +136,12 @@ class _MyAppState extends State<MyApp> {
       theme: themeData,
       home: CryptoListScreen(),
     );
+  }
+}
+
+@pragma('vm:entry-point')
+Future<void> backgroundCallback(Uri? uri) async {
+  if (uri?.host == 'handleRefresh') {
+    await CryptoHomeWidget.handleRefresh();
   }
 }

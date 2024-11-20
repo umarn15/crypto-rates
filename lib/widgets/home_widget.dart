@@ -15,10 +15,15 @@ class CryptoHomeWidget {
   // Initialize the widget
   static Future<void> initPlatformState() async {
     await HomeWidget.setAppGroupId(appGroupId);
+
+    HomeWidget.registerInteractivityCallback((Uri? uri) async {
+      if (uri?.host == 'REFRESH_DATA') {
+        await updatePriceData(isRefresh: true);
+      }
+    });
   }
 
-  // Update widget data
-  static Future<void> updatePriceData() async {
+  static Future<void> updatePriceData({bool isRefresh = false}) async {
     try {
       prefs = await SharedPreferences.getInstance();
 
@@ -59,15 +64,19 @@ class CryptoHomeWidget {
           final String encodedData = json.encode(widgetData);
           final String currentTime = DateTime.now().toLocal().toString();
 
+          // Save to both HomeWidget and SharedPreferences
           await HomeWidget.saveWidgetData<String>('crypto_data', encodedData);
           await HomeWidget.saveWidgetData<String>('last_updated', currentTime);
           await prefs.setString('crypto_data', encodedData);
           await prefs.setString('last_updated', currentTime);
 
-          await HomeWidget.updateWidget(
-            androidName: androidWidgetName,
-            iOSName: iOSWidgetName,
-          );
+          // Force update the widget
+          if (isRefresh) {
+            await HomeWidget.updateWidget(
+              androidName: androidWidgetName,
+              iOSName: iOSWidgetName,
+            );
+          }
 
           print('Widget data saved and update triggered');
         } else {
@@ -79,6 +88,11 @@ class CryptoHomeWidget {
     } catch (e) {
       print('Error updating widget: $e');
     }
+  }
+
+  // Add this new method to handle refresh
+  static Future<void> handleRefresh() async {
+    await updatePriceData(isRefresh: true);
   }
 
   // Helper method to get WebSocket for real-time updates

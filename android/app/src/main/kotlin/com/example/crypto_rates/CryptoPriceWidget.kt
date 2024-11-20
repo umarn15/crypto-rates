@@ -10,6 +10,11 @@ import android.widget.RemoteViews
 import org.json.JSONArray
 import android.graphics.Color
 import android.util.Log
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.os.Handler
+import android.os.Looper
 
 private const val TAG = "CryptoPriceWidget"
 
@@ -27,22 +32,44 @@ class CryptoPriceWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
+        Log.d(TAG, "onReceive called with action: ${intent.action}")
 
         when (intent.action) {
             AppWidgetManager.ACTION_APPWIDGET_UPDATE -> {
-                // Only update data if it's from the refresh button
-                if (intent.hasExtra("fromRefreshButton")) {
-                    val appWidgetManager = AppWidgetManager.getInstance(context)
-                    val thisWidget = ComponentName(context, CryptoPriceWidget::class.java)
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val thisWidget = ComponentName(context, CryptoPriceWidget::class.java)
+                val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+                onUpdate(context, appWidgetManager, appWidgetIds)
+            }
+            "REFRESH_ACTION" -> {
+                Log.d(TAG, "Refresh action received")
+                // Show refreshing state immediately
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val thisWidget = ComponentName(context, CryptoPriceWidget::class.java)
+                val views = RemoteViews(context.packageName, R.layout.crypto_price_widget)
+                views.setTextViewText(R.id.last_updated, "Refreshing...")
+                appWidgetManager.updateAppWidget(thisWidget, views)
+
+                // Create an intent to launch the Flutter activity
+                val launchIntent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    action = "REFRESH_DATA"
+                }
+                context.startActivity(launchIntent)
+
+                // Schedule an update after a short delay
+                Handler(Looper.getMainLooper()).postDelayed({
                     val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
                     onUpdate(context, appWidgetManager, appWidgetIds)
-                }
+                }, 2000) // 2 second delay
             }
             "OPEN_APP" -> {
-                // Launch app
+                Log.d(TAG, "Open app action received")
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                launchIntent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                context.startActivity(launchIntent)
+                launchIntent?.let {
+                    it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    context.startActivity(it)
+                }
             }
         }
     }
@@ -53,6 +80,7 @@ private fun updateAppWidget(
     appWidgetManager: AppWidgetManager,
     appWidgetId: Int
 ) {
+    Log.d(TAG, "updateAppWidget called for ID: $appWidgetId")
     val views = RemoteViews(context.packageName, R.layout.crypto_price_widget)
 
     // Add click intent to open app
@@ -69,36 +97,44 @@ private fun updateAppWidget(
 
     // Add refresh button click intent
     val refreshIntent = Intent(context, CryptoPriceWidget::class.java).apply {
-        action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-        putExtra("fromRefreshButton", true)
-        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
+        action = "REFRESH_ACTION"
     }
     val refreshPendingIntent = PendingIntent.getBroadcast(
         context,
-        appWidgetId,
+        1,
         refreshIntent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
     views.setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
 
     try {
-        // Try to get data from both possible SharedPreferences locations
-        var cryptoDataString: String? = null
+        // Try to get data from SharedPreferences
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val cryptoDataString = prefs.getString("flutter.crypto_data", null)
+        val lastUpdated = prefs.getString("flutter.last_updated", null)
 
-        // Try FlutterSharedPreferences first
-        val flutterPrefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        cryptoDataString = flutterPrefs.getString("flutter.crypto_data", null)
-        Log.d(TAG, "Data from FlutterSharedPreferences: $cryptoDataString")
+        Log.d(TAG, "Data from SharedPreferences: $cryptoDataString")
+        Log.d(TAG, "Last updated from SharedPreferences: $lastUpdated")
 
-        // If not found, try regular SharedPreferences
-        if (cryptoDataString == null) {
-            val prefs = context.getSharedPreferences("crypto_widget_prefs", Context.MODE_PRIVATE)
-            cryptoDataString = prefs.getString("crypto_data", null)
-            Log.d(TAG, "Data from regular SharedPreferences: $cryptoDataString")
+        // Update last updated time
+        if (lastUpdated != null) {
+            try {
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                val date = dateFormat.parse(lastUpdated.replace("T", " ").substring(0, 19))
+                val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                views.setTextViewText(R.id.last_updated, "Updated: ${timeFormat.format(date)}")
+                Log.d(TAG, "Successfully formatted last updated time")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing date: $e")
+                views.setTextViewText(R.id.last_updated, "Last update: unknown")
+            }
+        } else {
+            views.setTextViewText(R.id.last_updated, "Tap to refresh")
         }
 
         if (cryptoDataString != null) {
             val cryptoData = JSONArray(cryptoDataString)
+            Log.d(TAG, "Processing crypto data array of length: ${cryptoData.length()}")
 
             if (cryptoData.length() >= 3) {
                 // Update first cryptocurrency
@@ -108,7 +144,7 @@ private fun updateAppWidget(
                 val change1 = coin1.getString("change").toDouble()
                 views.setTextViewText(R.id.change1, "${if (change1 >= 0) "+" else ""}${change1}%")
                 views.setTextColor(R.id.change1, if (change1 >= 0) Color.GREEN else Color.RED)
-                Log.d(TAG, "Updated coin1: ${coin1.getString("symbol")} - $${coin1.getString("price")}")
+                Log.d(TAG, "Updated coin1: ${coin1.getString("symbol")}")
 
                 // Update second cryptocurrency
                 val coin2 = cryptoData.getJSONObject(1)
@@ -117,7 +153,7 @@ private fun updateAppWidget(
                 val change2 = coin2.getString("change").toDouble()
                 views.setTextViewText(R.id.change2, "${if (change2 >= 0) "+" else ""}${change2}%")
                 views.setTextColor(R.id.change2, if (change2 >= 0) Color.GREEN else Color.RED)
-                Log.d(TAG, "Updated coin2: ${coin2.getString("symbol")} - $${coin2.getString("price")}")
+                Log.d(TAG, "Updated coin2: ${coin2.getString("symbol")}")
 
                 // Update third cryptocurrency
                 val coin3 = cryptoData.getJSONObject(2)
@@ -126,13 +162,13 @@ private fun updateAppWidget(
                 val change3 = coin3.getString("change").toDouble()
                 views.setTextViewText(R.id.change3, "${if (change3 >= 0) "+" else ""}${change3}%")
                 views.setTextColor(R.id.change3, if (change3 >= 0) Color.GREEN else Color.RED)
-                Log.d(TAG, "Updated coin3: ${coin3.getString("symbol")} - $${coin3.getString("price")}")
+                Log.d(TAG, "Updated coin3: ${coin3.getString("symbol")}")
             } else {
-                Log.d(TAG, "Insufficient data: ${cryptoData.length()} coins")
+                Log.d(TAG, "Insufficient data in crypto array")
                 setErrorState(views, "Insufficient", "data", "available")
             }
         } else {
-            Log.d(TAG, "No crypto data found in any preferences")
+            Log.d(TAG, "No crypto data found")
             setErrorState(views, "No data", "Please open", "the app")
         }
     } catch (e: Exception) {
