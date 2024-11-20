@@ -17,16 +17,16 @@ class BinanceService {
     'DOGE': 'Dogecoin',
     'TRX': 'TRON',
     'DOT': 'Polkadot',
-    'USDT': 'Tether',
+    'MATIC': 'Polygon',
     'LINK': 'Chainlink',
     'UNI': 'Uniswap',
     'ATOM': 'Cosmos',
     'LTC': 'Litecoin',
     'AVAX': 'Avalanche',
     'ETC': 'Ethereum Classic',
-    'WBTC': 'Wrapped Bitcoin',
+    'XLM': 'Stellar',
     'NEAR': 'NEAR Protocol',
-    'USDC': 'USD Coin',
+    'ALGO': 'Algorand',
     'ICP': 'Internet Computer',
   };
 
@@ -59,7 +59,7 @@ class BinanceService {
         });
 
         // Sort by market cap
-       coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
+        coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
 
         // Assign ranks after sorting
         for (int i = 0; i < coins.length; i++) {
