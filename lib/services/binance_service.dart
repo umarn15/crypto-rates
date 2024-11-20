@@ -11,24 +11,25 @@ class BinanceService {
     'BTC': 'Bitcoin',
     'ETH': 'Ethereum',
     'BNB': 'Binance Coin',
-    'SOL': 'Solana',
+    'USDT': 'Tether',
+    'USDC': 'USD Coin',
     'XRP': 'Ripple',
     'ADA': 'Cardano',
     'DOGE': 'Dogecoin',
+    'SOL': 'Solana',
     'TRX': 'TRON',
     'DOT': 'Polkadot',
     'MATIC': 'Polygon',
-    'LINK': 'Chainlink',
-    'UNI': 'Uniswap',
-    'ATOM': 'Cosmos',
     'LTC': 'Litecoin',
+    'ATOM': 'Cosmos',
+    'LINK': 'Chainlink',
     'AVAX': 'Avalanche',
-    'ETC': 'Ethereum Classic',
     'XLM': 'Stellar',
+    'UNI': 'Uniswap',
+    'ETC': 'Ethereum Classic',
     'NEAR': 'NEAR Protocol',
-    'ALGO': 'Algorand',
-    'ICP': 'Internet Computer',
   };
+
 
   // In BinanceService class
   static Future<List<Coin>> getInitialData() async {
@@ -42,10 +43,12 @@ class BinanceService {
         // First, filter USDT pairs and create coins
         data.where((item) => item['symbol'].toString().endsWith('USDT')).forEach((item) {
           final symbol = item['symbol'].toString().replaceAll('USDT', '');
+
+          // Ensure only coins in _symbolToName are included
           if (_symbolToName.containsKey(symbol)) {
             final price = double.parse(item['lastPrice']);
             final volume = double.parse(item['quoteVolume']); // USDT volume
-            final marketCap = price * volume; // Approximate market cap using volume
+            final marketCap = price * volume; // Approximate market cap
 
             coins.add(Coin(
               symbol: symbol,
@@ -57,7 +60,6 @@ class BinanceService {
             ));
           }
         });
-
         // Sort by market cap
         coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
 
