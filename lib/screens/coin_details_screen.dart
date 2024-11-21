@@ -342,7 +342,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         ),
                         SizedBox(height: 20),
                         DropdownButtonFormField<String>(
-                          dropdownColor: Colors.blueGrey.shade800,
+                          dropdownColor: Colors.blueGrey.shade900,
                           value: _selectedCondition,
                           icon: Icon(Icons.arrow_drop_down),
                           decoration: InputDecoration(
@@ -395,7 +395,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
-                            fillColor: Colors.blueGrey.shade900.withOpacity(0.5),
+                            fillColor: Colors.blueGrey.shade900,
                             labelText: 'Price in USD',
                             labelStyle: TextStyle(color: Colors.grey.shade400),
                             prefixIcon: Icon(Icons.attach_money, size: 20),
@@ -555,7 +555,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
           Container(
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blueGrey.shade900.withOpacity(0.5),
+              color: Colors.blueGrey.shade900,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 20, color: Colors.white,),
@@ -584,7 +584,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade900.withOpacity(0.3),
+        color: Colors.blueGrey.shade900,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: alert.isEnabled
