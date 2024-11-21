@@ -208,6 +208,8 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
   PreferredSizeWidget _buildAppBar() {
     if (isSearching) {
       return AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         leading: BackButton(
           onPressed: () {
             setState(() {
@@ -220,17 +222,33 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           controller: _searchController,
           autofocus: true,
           style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Search coins...',
-            hintStyle: TextStyle(color: Colors.white70),
-            border: InputBorder.none,
+            hintStyle: const TextStyle(color: Colors.white60),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.1),
+            prefixIcon: const Icon(Icons.search, color: Colors.white60),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
         ),
       );
     }
 
     return AppBar(
-      title: const Text('Cryptocurrency List'),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      title: const Text(
+        'Crypto Market',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.search),
@@ -245,7 +263,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
           onPressed: _initializeData,
         ),
         Padding(
-          padding: const EdgeInsets.only(right: 8.0),
+          padding: const EdgeInsets.only(right: 12),
           child: IconButton(
             onPressed: () {
               Navigator.push(
@@ -260,65 +278,147 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
     );
   }
 
+  Widget _buildCoinCard(Coin coin) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color:  Colors.white.withOpacity(0.03),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CoinDetailScreen(initialCoin: coin),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '#${coin.rank}',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      coin.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            coin.symbol,
+                            style: TextStyle(
+                              color: Colors.grey.shade300,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Market Cap: ${formatMarketCap(coin.marketCap)}',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    formatPrice(coin.price),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: coin.change24h >= 0
+                          ? Colors.green.withOpacity(0.2)
+                          : Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toStringAsFixed(2)}%',
+                      style: TextStyle(
+                        color: coin.change24h >= 0 ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
       drawer: _drawerContent,
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
+        ),
+      )
           : ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: filteredCoins.length,
         itemBuilder: (context, index) {
-          final coin = filteredCoins[index];
-          return ListTile(
-            leading: Text(
-              '#${coin.rank}',
-              style: TextStyle(
-                color: Colors.grey.shade300,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            title: Text(
-              '${coin.name} (${coin.symbol})',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            subtitle: Text(
-              'Market Cap: ${formatMarketCap(coin.marketCap)}',
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  formatPrice(coin.price),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  '${coin.change24h >= 0 ? '+' : ''}${coin.change24h.toStringAsFixed(2)}%',
-                  style: TextStyle(
-                    color: coin.change24h >= 0 ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CoinDetailScreen(initialCoin: coin),
-                ),
-              );
-            },
-          );
+          return _buildCoinCard(filteredCoins[index]);
         },
       ),
     );
@@ -331,29 +431,69 @@ class DrawerContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    const TextStyle style = TextStyle(color: Colors.white, fontSize: 17);
 
     if (user == null) {
       return Drawer(
         backgroundColor: Colors.blueGrey.shade900,
-        child: DrawerHeader(
-          child: Center(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-              child: const Text(
-                'Sign In',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.white,
+        child: Column(
+          children: [
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.blue.withOpacity(0.2),
+                    Colors.purple.withOpacity(0.2),
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.person_outline,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      child: const Text(
+                        'Sign In',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
       );
     }
@@ -364,61 +504,161 @@ class DrawerContent extends StatelessWidget {
         future: getUserData(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+              ),
+            );
           }
 
           if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(child: Text('Error loading user data'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.red.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Error loading user data',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            );
           }
 
           final userData = snapshot.data!;
 
-          return ListView(
-            padding: EdgeInsets.zero,
+          return Column(
             children: [
-              UserAccountsDrawerHeader(
-                accountName: Text(userData.name, style: style),
-                accountEmail: Text(userData.email, style: style),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: Colors.blueGrey,
-                  child: Text(
-                    userData.name[0].toUpperCase(),
-                    style: const TextStyle(fontSize: 24, color: Colors.white),
+              SafeArea(
+                child: Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                      ),
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        child: Text(
+                          userData.name[0].toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      userData.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      userData.email,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade300,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.calendar_today, color: Colors.white, size: 20),
+                ),
+                title: const Text(
+                  'Member since',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
                   ),
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.shade900,
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.calendar_today, color: Colors.white),
-                title: const Text('Joined', style: style),
                 subtitle: Text(
                   userData.createdAt != null
-                      ? DateFormat('MMM d, yyyy').format(userData.createdAt!.toDate())
+                      ? DateFormat('MMMM d, yyyy').format(userData.createdAt!.toDate())
                       : 'Not available',
-                  style: style,
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
                 ),
               ),
-              const Divider(),
+              const Divider(
+                color: Colors.white24,
+                indent: 16,
+                endIndent: 16,
+              ),
               ListTile(
-                leading: const Icon(Icons.logout, color: Colors.white),
-                title: const Text('Sign Out', style: style),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+                ),
+                title: const Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 16,
+                  ),
+                ),
                 onTap: () {
                   showDialog(
                     context: context,
                     builder: (context) {
                       return AlertDialog(
+                        backgroundColor: Colors.blueGrey.shade800,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         title: const Text(
-                          'Are you sure you want to Log out?',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          'Sign Out',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        content: const Text(
+                          'Are you sure you want to sign out?',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
                           ),
-                          TextButton(
+                          ElevatedButton(
                             onPressed: () async {
                               await FirebaseAuth.instance.signOut();
                               if (context.mounted) {
@@ -428,7 +668,15 @@ class DrawerContent extends StatelessWidget {
                                 );
                               }
                             },
-                            child: const Text('Yes'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Sign Out'),
                           ),
                         ],
                       );
