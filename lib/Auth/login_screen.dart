@@ -31,7 +31,6 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Form(
         key: authKey,
         child: Scaffold(
-          backgroundColor: Colors.black,
           body: loading ? Center(
             child: CircularProgressIndicator() ) :
           SingleChildScrollView(

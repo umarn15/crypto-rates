@@ -35,7 +35,6 @@ class _SignUpState extends State<SignUp> {
       child: Form(
         key: keyPass,
         child: Scaffold(
-          backgroundColor: Colors.black,
           body: loading ? Center(
             child: CircularProgressIndicator()
           ) :
