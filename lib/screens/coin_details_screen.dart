@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../Auth/login_screen.dart';
 import '../models/alert_model.dart';
 import '../models/coin_model.dart';
 import '../services/binance_service.dart';
@@ -441,6 +442,16 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                                         Text('Please login to set alerts'),
                                       ],
                                     ),
+                                    action: SnackBarAction(
+                                      label: 'Login',
+                                      textColor: Colors.white,
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                        );
+                                      },
+                                    ),
                                     backgroundColor: Colors.red,
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(
@@ -502,6 +513,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         builder: (context, snapshot) {
                           if (currentUser == null) {
                             return _buildEmptyState(
+                              showLoginButton: currentUser == null,
                               icon: Icons.lock,
                               message: 'Login to see your alerts',
                             );
@@ -509,6 +521,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
                           if (snapshot.hasError) {
                             return _buildEmptyState(
+                              showLoginButton: currentUser == null,
                               icon: Icons.error_outline,
                               message: 'Error loading alerts',
                             );
@@ -522,6 +535,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                             return _buildEmptyState(
+                              showLoginButton: currentUser == null,
                               icon: Icons.notifications_off,
                               message: 'No active alerts',
                             );
@@ -631,6 +645,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
   Widget _buildEmptyState({
     required IconData icon,
     required String message,
+    required bool showLoginButton,
   }) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 18),
@@ -647,6 +662,32 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
               fontSize: 16,
             ),
           ),
+          if (showLoginButton) ...[
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Login',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

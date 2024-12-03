@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:crypto_rates/Auth/login_screen.dart';
 import 'package:crypto_rates/models/user_model.dart';
 import 'package:crypto_rates/screens/saved_alerts_screen.dart';
@@ -7,6 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/coin_model.dart';
 import '../services/binance_service.dart';
@@ -425,8 +428,31 @@ class _CryptoListScreenState extends State<CryptoListScreen> {
   }
 }
 
-class DrawerContent extends StatelessWidget {
+class DrawerContent extends StatefulWidget {
   const DrawerContent({Key? key}) : super(key: key);
+
+  @override
+  State<DrawerContent> createState() => _DrawerContentState();
+}
+
+class _DrawerContentState extends State<DrawerContent> {
+
+  int _rating = 0;
+
+  void _handleRating(int rating) async {
+    setState(() {
+      _rating = rating;
+    });
+
+    Navigator.of(context).pop();
+
+    if (rating >= 4) {
+      final url = Platform.isAndroid
+          ? 'market://details?id=com.example.crypto_rates'
+          : 'https://apps.apple.com/app/idYOUR_APP_ID'; // todo
+      await launchUrl(Uri.parse(url));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +491,113 @@ class DrawerContent extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    const Divider(
+                      color: Colors.white24,
+                      indent: 16,
+                      endIndent: 16,
+                    ),
+                    const SizedBox(height: 8),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.star, color: Colors.amber, size: 20),
+                      ),
+                      title: const Text(
+                        'Rate Us',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            backgroundColor: Colors.blueGrey.shade800,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: const Text(
+                              'Rate Our App',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'If you enjoy using our app, please take a moment to rate it. Your feedback helps us improve!',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(
+                                    5,
+                                        (index) => IconButton(
+                                      icon: Icon(
+                                        Icons.star_border,
+                                        color: Colors.amber,
+                                        size: 32,
+                                      ),
+                                      onPressed: (){
+                                        _handleRating(_rating);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  'Maybe Later',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.share, color: Colors.blue, size: 20),
+                      ),
+                      title: const Text(
+                        'Share App',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                      onTap: () {
+                        Share.share(
+                          'Check out this awesome crypto tracking app!\n\n'
+                              'Download now: [Your App Store Link]', // todo Replace with your app's store link
+                          subject: 'Check out this Crypto Tracking App',
+                        );
+                      },
+                    ),
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).push(
@@ -607,6 +739,106 @@ class DrawerContent extends StatelessWidget {
                 color: Colors.white24,
                 indent: 16,
                 endIndent: 16,
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.star, color: Colors.amber, size: 20),
+                ),
+                title: const Text(
+                  'Rate Us',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.blueGrey.shade800,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      title: const Text(
+                        'Rate Our App',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'If you enjoy using our app, please take a moment to rate it. Your feedback helps us improve!',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(
+                                   5,
+                                  (index) => IconButton(
+                                icon: Icon(
+                                  Icons.star_border,
+                                  color: Colors.amber,
+                                  size: 32,
+                                ),
+                                onPressed: (){
+                                  _handleRating(_rating);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Maybe Later',
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.share, color: Colors.blue, size: 20),
+                ),
+                title: const Text(
+                  'Share App',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                onTap: () {
+                  Share.share(
+                    'Check out this awesome crypto tracking app!\n\n'
+                        'Download now: [Your App Store Link]', // todo Replace with your app's store link
+                    subject: 'Check out this Crypto Tracking App',
+                  );
+                },
               ),
               ListTile(
                 leading: Container(
