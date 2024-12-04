@@ -53,10 +53,8 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   void _setupWebSocket() {
     try {
-      // Close existing connection if any
       _channel?.sink.close();
 
-      // Connect to WebSocket for single coin
       _channel = BinanceService.getSingleCoinWebSocket(widget.initialCoin.symbol);
 
       _channel!.stream.listen(
