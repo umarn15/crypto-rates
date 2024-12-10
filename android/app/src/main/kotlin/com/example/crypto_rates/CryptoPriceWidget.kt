@@ -19,14 +19,25 @@ import android.os.Looper
 private const val TAG = "CryptoPriceWidget"
 
 class CryptoPriceWidget : AppWidgetProvider() {
+    private val updateLock = Any()
+    private var isUpdating = false
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        Log.d(TAG, "onUpdate called")
-        for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
+        synchronized(updateLock) {
+            if (isUpdating) return
+            isUpdating = true
+
+            try {
+                for (appWidgetId in appWidgetIds) {
+                    updateAppWidget(context, appWidgetManager, appWidgetId)
+                }
+            } finally {
+                isUpdating = false
+            }
         }
     }
 
