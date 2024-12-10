@@ -32,17 +32,16 @@ Future<void> initializeApp() async {
     HomeWidget.registerInteractivityCallback(backgroundCallback);
     await CryptoHomeWidget.initPlatformState();
 
-    // Reduced initial update frequency
     await Workmanager().initialize(callbackDispatcher);
     await Workmanager().registerPeriodicTask(
       "cryptoUpdate",
       "updateWidget",
-      frequency: Duration(minutes: 30), // Increased to 30 minutes
+      frequency: Duration(minutes: 30),
       constraints: Constraints(
         networkType: NetworkType.connected,
-        requiresBatteryNotLow: true // Only update when battery isn't low
+        requiresBatteryNotLow: true
       ),
-      backoffPolicy: BackoffPolicy.exponential, // Add exponential backoff
+      backoffPolicy: BackoffPolicy.exponential,
     );
 
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
