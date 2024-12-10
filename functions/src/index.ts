@@ -351,3 +351,245 @@ export const checkPriceAlerts = functions.pubsub
       throw error;
     }
   });
+
+
+  interface ForexAlert {
+    id: string;
+    pairSymbol: string;
+    baseCurrency: string;
+    quoteCurrency: string;
+    targetPrice: number;
+    condition: 'above' | 'below';
+    isEnabled: boolean;
+  }
+
+  interface User {
+    fcmToken?: string;
+  }
+
+  class ForexApiManager {
+    private static readonly API_KEY = 'HxgjgDgzW7FJasIp8bK7yprHBhnBqynr';
+    private static readonly BASE_URL = 'https://api.polygon.io/v2';
+
+    static async fetchForexPrices(pairs: string[]): Promise<Map<string, number>> {
+      try {
+        const priceMap = new Map<string, number>();
+
+        // Fetch prices for each pair
+        for (const pair of pairs) {
+          try {
+            const response = await axios.get(
+              `${this.BASE_URL}/aggs/ticker/C:${pair}/prev`,
+              {
+                params: {
+                  apiKey: this.API_KEY
+                }
+              }
+            );
+
+            if (response.data?.results?.[0]?.c) {
+              const price = response.data.results[0].c;
+              priceMap.set(pair, price);
+              console.log(`Fetched price for ${pair}: ${price}`);
+            }
+          } catch (error) {
+            console.error(`Error fetching price for ${pair}:`, error);
+          }
+        }
+
+        return priceMap;
+      } catch (error) {
+        console.error('Error fetching forex prices:', error);
+        throw error;
+      }
+    }
+  }
+
+  async function sendForexAlert(
+    userId: string,
+    alert: ForexAlert,
+    currentPrice: number,
+    fcmToken: string
+  ): Promise<void> {
+    try {
+      const message = {
+        notification: {
+          title: `${alert.pairSymbol} Price Alert`,
+          body: `Price has gone ${alert.condition} ${alert.targetPrice.toFixed(4)} (Current: ${currentPrice.toFixed(4)})`,
+        },
+        data: {
+          pairSymbol: alert.pairSymbol,
+          targetPrice: alert.targetPrice.toString(),
+          currentPrice: currentPrice.toString(),
+          condition: alert.condition,
+          alertId: alert.id,
+          type: 'forex'
+        },
+        token: fcmToken,
+      };
+
+      await messaging.send(message);
+      console.log(`Forex alert sent for ${alert.pairSymbol} to user ${userId}`);
+    } catch (error) {
+      console.error('Error sending forex notification:', error);
+      if ((error as any)?.errorInfo?.code === 'messaging/registration-token-not-registered') {
+        await db.collection('Users').doc(userId).update({
+          fcmToken: admin.firestore.FieldValue.delete()
+        });
+      }
+      throw error;
+    }
+  }
+
+  async function processForexAlert(
+    userId: string,
+    alert: ForexAlert,
+    currentPrice: number
+  ): Promise<void> {
+    try {
+      if (isNaN(currentPrice) || currentPrice <= 0) {
+        console.error(`Invalid price for ${alert.pairSymbol}: ${currentPrice}`);
+        return;
+      }
+
+      if (isNaN(alert.targetPrice) || alert.targetPrice <= 0) {
+        console.error(`Invalid target price for forex alert ${alert.id}: ${alert.targetPrice}`);
+        return;
+      }
+
+      const shouldTrigger = alert.condition === 'above'
+        ? currentPrice >= alert.targetPrice
+        : currentPrice <= alert.targetPrice;
+
+      console.log(`Processing forex alert for ${alert.pairSymbol}:
+        Current price: ${currentPrice.toFixed(4)}
+        Target: ${alert.targetPrice.toFixed(4)}
+        Condition: ${alert.condition}
+        Should trigger: ${shouldTrigger}
+      `);
+
+      if (shouldTrigger) {
+        const userDoc = await db.collection('Users').doc(userId).get();
+        const userData = userDoc.data() as User | undefined;
+
+        if (!userData?.fcmToken) {
+          console.log(`No FCM token found for user ${userId}`);
+          return;
+        }
+
+        try {
+          await sendForexAlert(userId, alert, currentPrice, userData.fcmToken);
+
+          // Record alert history
+          await db.collection('Users')
+            .doc(userId)
+            .collection('forexAlertHistory')
+            .add({
+              alertId: alert.id,
+              pairSymbol: alert.pairSymbol,
+              targetPrice: alert.targetPrice,
+              triggeredPrice: currentPrice,
+              condition: alert.condition,
+              triggeredAt: admin.firestore.FieldValue.serverTimestamp(),
+              userId: userId,
+              success: true,
+            });
+
+          // Update alert status
+          await db.collection('Users')
+            .doc(userId)
+            .collection('forex_alerts')
+            .doc(alert.id)
+            .update({
+              isEnabled: false,
+              triggeredAt: admin.firestore.FieldValue.serverTimestamp(),
+              triggeredPrice: currentPrice,
+              notificationSent: true,
+              lastChecked: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+        } catch (error) {
+          console.error(`Error processing forex alert ${alert.id}:`, error);
+
+          await db.collection('Users')
+            .doc(userId)
+            .collection('forexAlertHistory')
+            .add({
+              alertId: alert.id,
+              pairSymbol: alert.pairSymbol,
+              targetPrice: alert.targetPrice,
+              triggeredPrice: currentPrice,
+              condition: alert.condition,
+              triggeredAt: admin.firestore.FieldValue.serverTimestamp(),
+              userId: userId,
+              success: false,
+              error: error.message,
+            });
+
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error(`Error processing forex alert ${alert.id}:`, error);
+      throw error;
+    }
+  }
+
+  export const checkForexAlerts = functions.pubsub
+    .schedule('every 2 minutes')
+    .onRun(async (context) => {
+      try {
+        const usersSnapshot = await db.collection('Users').get();
+
+        for (const userDoc of usersSnapshot.docs) {
+          const userId = userDoc.id;
+
+          try {
+            const alertsSnapshot = await db.collection('Users')
+              .doc(userId)
+              .collection('forex_alerts')
+              .where('isEnabled', '==', true)
+              .get();
+
+            if (alertsSnapshot.empty) continue;
+
+            const pairGroups = new Map<string, ForexAlert[]>();
+            alertsSnapshot.docs.forEach(doc => {
+              const alert = { id: doc.id, ...doc.data() } as ForexAlert;
+              const alerts = pairGroups.get(alert.pairSymbol) || [];
+              alerts.push(alert);
+              pairGroups.set(alert.pairSymbol, alerts);
+            });
+
+            const uniquePairs = Array.from(pairGroups.keys());
+            const prices = await ForexApiManager.fetchForexPrices(uniquePairs);
+
+            const promises = Array.from(pairGroups.entries()).map(
+              async ([pair, alerts]) => {
+                const currentPrice = prices.get(pair);
+                if (currentPrice === undefined || currentPrice <= 0) {
+                  console.error(`Invalid price found for pair ${pair}: ${currentPrice}`);
+                  return Promise.all([]);
+                }
+
+                return Promise.all(
+                  alerts.map(alert => processForexAlert(userId, alert, currentPrice))
+                );
+              }
+            );
+
+            await Promise.all(promises);
+
+          } catch (error) {
+            console.error(`Error processing forex alerts for user ${userId}:`, error);
+            continue;
+          }
+        }
+
+        console.log('Successfully processed forex alerts for all users');
+
+      } catch (error) {
+        console.error('Error in checkForexAlerts:', error);
+        throw error;
+      }
+    });

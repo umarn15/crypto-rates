@@ -2,52 +2,56 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Alert {
   final String id;
-  final String coinId;
-  final String coinSymbol;
-  final double targetPrice;
+  final String coinSymbol;      // For crypto
+  final String? pairSymbol;     // For forex
+  final String? baseCurrency;   // For forex
+  final String? quoteCurrency;  // For forex
   final String condition;
+  final double targetPrice;
   final bool isEnabled;
   final double currentPrice;
   final Timestamp? createdAt;
-  final Timestamp? triggeredAt;
 
   Alert({
     required this.id,
-    required this.coinId,
     required this.coinSymbol,
-    required this.targetPrice,
+    this.pairSymbol,
+    this.baseCurrency,
+    this.quoteCurrency,
     required this.condition,
+    required this.targetPrice,
     required this.isEnabled,
     required this.currentPrice,
     this.createdAt,
-    this.triggeredAt
   });
+
+  factory Alert.fromMap(Map<String, dynamic> map) {
+    return Alert(
+      id: map['id'],
+      coinSymbol: map['coinSymbol'] ?? '',
+      pairSymbol: map['pairSymbol'],
+      baseCurrency: map['baseCurrency'],
+      quoteCurrency: map['quoteCurrency'],
+      condition: map['condition'],
+      targetPrice: map['targetPrice'].toDouble(),
+      isEnabled: map['isEnabled'],
+      currentPrice: map['currentPrice'].toDouble(),
+      createdAt: map['createdAt'],
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'coinId': coinId,
       'coinSymbol': coinSymbol,
-      'targetPrice': targetPrice,
+      'pairSymbol': pairSymbol,
+      'baseCurrency': baseCurrency,
+      'quoteCurrency': quoteCurrency,
       'condition': condition,
+      'targetPrice': targetPrice,
       'isEnabled': isEnabled,
       'currentPrice': currentPrice,
+      'createdAt': createdAt,
     };
-  }
-
-  factory Alert.fromMap(Map<String, dynamic> map) {
-    return Alert(
-      id: map['id'] ?? '',
-      coinId: map['coinId'] ?? '',
-      coinSymbol: map['coinSymbol'] ?? '',
-      targetPrice: map['targetPrice'] ?? 0.0,
-      condition: map['condition'] ?? '',
-      isEnabled: map['isEnabled'] ?? false,
-      currentPrice: map['currentPrice'] ?? 0.0,
-      createdAt: map['createdAt'] is Timestamp
-          ? map['createdAt'] : Timestamp.now(),
-      triggeredAt: map['triggeredAt'] is Timestamp
-          ? map['triggeredAt'] : Timestamp.now(),
-    );
   }
 }

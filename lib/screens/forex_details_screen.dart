@@ -6,19 +6,19 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../Auth/login_screen.dart';
 import '../models/alert_model.dart';
-import '../models/coin_model.dart';
-import '../services/binance_service.dart';
+import '../models/forex_pair_model.dart';
+import '../services/forex_service.dart';
 
-class CoinDetailScreen extends StatefulWidget {
-  final Coin initialCoin;
+class ForexDetailScreen extends StatefulWidget {
+  final ForexPair initialPair;
 
-  CoinDetailScreen({required this.initialCoin});
+  const ForexDetailScreen({Key? key, required this.initialPair}) : super(key: key);
 
   @override
-  _CoinDetailScreenState createState() => _CoinDetailScreenState();
+  _ForexDetailScreenState createState() => _ForexDetailScreenState();
 }
 
-class _CoinDetailScreenState extends State<CoinDetailScreen> {
+class _ForexDetailScreenState extends State<ForexDetailScreen> {
   final _alertFormKey = GlobalKey<FormState>();
   final _priceController = TextEditingController();
   String? _selectedCondition = 'above';
@@ -26,15 +26,15 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
   final currentUser = FirebaseAuth.instance.currentUser;
 
   late Stream<QuerySnapshot> alertsStream;
-  late StreamController<Coin> _coinController;
+  late StreamController<ForexPair> _pairController;
   WebSocketChannel? _channel;
-  late Coin currentCoin;
+  late ForexPair currentPair;
 
   @override
   void initState() {
     super.initState();
-    currentCoin = widget.initialCoin;
-    _coinController = StreamController<Coin>.broadcast();
+    currentPair = widget.initialPair;
+    _pairController = StreamController<ForexPair>.broadcast();
     _initializeStreams();
     _setupWebSocket();
   }
@@ -45,8 +45,8 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       alertsStream = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
-          .collection('alerts')
-          .where('coinSymbol', isEqualTo: widget.initialCoin.symbol)
+          .collection('forex_alerts')
+          .where('pairSymbol', isEqualTo: widget.initialPair.symbol)
           .snapshots();
     }
   }
@@ -55,28 +55,42 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
     try {
       _channel?.sink.close();
 
-      _channel = BinanceService.getSingleCoinWebSocket(widget.initialCoin.symbol);
+      _channel = WebSocketChannel.connect(
+        Uri.parse('wss://socket.polygon.io/forex'),
+      );
+
+      _channel!.sink.add(json.encode({
+        "action": "auth",
+        "params": ForexService.API_KEY
+      }));
+
+      _channel!.sink.add(json.encode({
+        "action": "subscribe",
+        "params": ["C.${widget.initialPair.symbol}"]
+      }));
 
       _channel!.stream.listen(
             (dynamic message) {
           try {
             final data = jsonDecode(message);
+            if (data is List && data.isNotEmpty && data[0]['ev'] == 'C') {
+              final tickData = data[0];
+              final double newPrice = tickData['bp'].toDouble();
+              final double newChange = tickData['c'].toDouble();
 
-            final double newPrice = double.parse(data['c']);
-            final double newChange = double.parse(data['P']);
+              if (currentPair.price != newPrice || currentPair.change24h != newChange) {
+                final updatedPair = currentPair.copyWith(
+                  price: newPrice,
+                  change24h: newChange,
+                  volume: tickData['v'].toDouble(),
+                );
 
-            if (currentCoin.price != newPrice || currentCoin.change24h != newChange) {
-              final updatedCoin = currentCoin.copyWith(
-                price: newPrice,
-                change24h: newChange,
-                marketCap: double.parse(data['q']) * newPrice, // Volume * Price
-              );
-
-              if (mounted) {
-                setState(() {
-                  currentCoin = updatedCoin;
-                });
-                _coinController.add(updatedCoin);
+                if (mounted) {
+                  setState(() {
+                    currentPair = updatedPair;
+                  });
+                  _pairController.add(updatedPair);
+                }
               }
             }
           } catch (e) {
@@ -85,12 +99,10 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         },
         onError: (error) {
           print('WebSocket Error: $error');
-          // Reconnect after error
           Future.delayed(Duration(seconds: 5), _setupWebSocket);
         },
         onDone: () {
           print('WebSocket connection closed');
-          // Reconnect when connection closes
           Future.delayed(Duration(seconds: 5), _setupWebSocket);
         },
       );
@@ -98,14 +110,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       print('Error setting up WebSocket: $e');
       Future.delayed(Duration(seconds: 5), _setupWebSocket);
     }
-  }
-
-  @override
-  void dispose() {
-    _channel?.sink.close();
-    _coinController.close();
-    _priceController.dispose();
-    super.dispose();
   }
 
   Future<void> _setAlert() async {
@@ -125,17 +129,18 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         final alertRef = FirebaseFirestore.instance
             .collection('Users')
             .doc(user.uid)
-            .collection('alerts')
+            .collection('forex_alerts')
             .doc();
 
         final Map<String, dynamic> alertData = {
           'id': alertRef.id,
-          'coinId': currentCoin.symbol,
-          'coinSymbol': currentCoin.symbol,
+          'pairSymbol': currentPair.symbol,
+          'baseCurrency': currentPair.baseCurrency,
+          'quoteCurrency': currentPair.quoteCurrency,
           'targetPrice': double.parse(_priceController.text),
           'condition': _selectedCondition!,
           'isEnabled': true,
-          'currentPrice': currentCoin.price,
+          'currentPrice': currentPair.price,
           'createdAt': FieldValue.serverTimestamp(),
         };
 
@@ -143,7 +148,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Alert set for ${currentCoin.symbol} at \$${_priceController.text}'),
+            content: Text('Alert set for ${currentPair.symbol} at \$${_priceController.text}'),
           ),
         );
 
@@ -167,7 +172,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
-          .collection('alerts')
+          .collection('forex_alerts')
           .doc(alert.id)
           .update({'isEnabled': !alert.isEnabled});
     } catch (e) {
@@ -188,7 +193,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
-          .collection('alerts')
+          .collection('forex_alerts')
           .doc(alertId)
           .delete();
     } catch (e) {
@@ -208,7 +213,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         title: Text(
-          '${currentCoin.name} (${currentCoin.symbol})',
+          '${currentPair.name}',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -235,7 +240,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                 child: Column(
                   children: [
                     Text(
-                      '\$${currentCoin.price.toStringAsFixed(2)}',
+                      currentPair.price.toStringAsFixed(4),
                       style: TextStyle(
                         fontSize: 42,
                         fontWeight: FontWeight.w700,
@@ -246,7 +251,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: currentCoin.change24h >= 0
+                        color: currentPair.change24h >= 0
                             ? Colors.green.withOpacity(0.15)
                             : Colors.red.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(20),
@@ -255,20 +260,20 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            currentCoin.change24h >= 0
+                            currentPair.change24h >= 0
                                 ? Icons.arrow_upward
                                 : Icons.arrow_downward,
-                            color: currentCoin.change24h >= 0
+                            color: currentPair.change24h >= 0
                                 ? Colors.green
                                 : Colors.red,
                             size: 18,
                           ),
                           SizedBox(width: 4),
                           Text(
-                            '${currentCoin.change24h.abs().toStringAsFixed(2)}%',
+                            '${currentPair.change24h.abs().toStringAsFixed(2)}%',
                             style: TextStyle(
                               fontSize: 16,
-                              color: currentCoin.change24h >= 0
+                              color: currentPair.change24h >= 0
                                   ? Colors.green
                                   : Colors.red,
                               fontWeight: FontWeight.bold,
@@ -303,13 +308,18 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                       SizedBox(height: 4),
                       Divider(height: 24, color: Colors.grey.withOpacity(0.2)),
                       _buildStatRow(
-                        'Market Rank',
-                        '#${currentCoin.rank}',
-                        Icons.leaderboard,
+                        'Base Currency',
+                        currentPair.baseCurrency,
+                        Icons.currency_exchange,
                       ),
                       _buildStatRow(
-                        'Market Cap',
-                        '\$${(currentCoin.marketCap / 1e9).toStringAsFixed(2)}B',
+                        'Quote Currency',
+                        currentPair.quoteCurrency,
+                        Icons.currency_exchange,
+                      ),
+                      _buildStatRow(
+                        'Volume',
+                        '${(currentPair.volume / 1e6).toStringAsFixed(2)}M',
                         Icons.analytics,
                       ),
                     ],
@@ -407,10 +417,10 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                             if (price == null) {
                               return 'Please enter a valid number';
                             }
-                            if (_selectedCondition == 'below' && price >= currentCoin.price) {
+                            if (_selectedCondition == 'below' && price >= widget.initialPair.price) {
                               return 'Alert price must be below current price';
                             }
-                            if (_selectedCondition == 'above' && price <= currentCoin.price) {
+                            if (_selectedCondition == 'above' && price <= widget.initialPair.price) {
                               return 'Alert price must be above current price';
                             }
                             return null;
@@ -465,9 +475,9 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                             child: Text(
                               'Set Alert',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white
                               ),
                             ),
                           ),
@@ -551,6 +561,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                 ),
               ),
               SizedBox(height: 20),
+
             ],
           ),
         ),
@@ -733,10 +744,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       },
     );
   }
-}
 
-extension StringExtension on String {
-  String capitalize() {
-    return "${this[0].toUpperCase()}${substring(1)}";
+  @override
+  void dispose() {
+    _channel?.sink.close();
+    _pairController.close();
+    _priceController.dispose();
+    super.dispose();
   }
 }
