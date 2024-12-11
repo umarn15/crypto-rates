@@ -31,7 +31,7 @@ class BinanceService {
   };
 
 
-  // In BinanceService class
+
   static Future<List<Coin>> getInitialData() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/ticker/24hr'));
@@ -60,10 +60,8 @@ class BinanceService {
             ));
           }
         });
-        // Sort by market cap
         coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
 
-        // Assign ranks after sorting
         for (int i = 0; i < coins.length; i++) {
           coins[i] = coins[i].copyWith(rank: i + 1);
         }

@@ -200,7 +200,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
   }
 
   void _setupForexWebSocket() {
-    if (!mounted) return;  // Prevent setup if widget is disposed
+    if (!mounted) return;
 
     try {
       _forexChannel?.sink.close();
@@ -209,29 +209,72 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
         Uri.parse('wss://socket.polygon.io/forex'),
       );
 
-      // Add connection error handling
       _forexChannel!.stream.handleError((error) {
         print('Forex WebSocket connection error: $error');
-        return;  // Don't try to reconnect immediately on error
+        return;
       }).listen(
             (dynamic message) {
-          // ... rest of your existing listen code ...
+              try {
+                final data = jsonDecode(message);
+
+                if (data is Map && data['status'] == 'connected') {
+                  print('Successfully connected to forex stream');
+                  return;
+                }
+
+                if (data is Map && data['status'] == 'auth_success') {
+                  print('Successfully authenticated');
+                  return;
+                }
+
+                bool updatedAny = false;
+                if (data is List) {
+                  for (var tick in data) {
+                    if (tick['ev'] == 'C') {
+                      final String pair = tick['p'];
+                      final pairIndex = forexPairs.indexWhere(
+                              (forex) => forex.symbol == pair
+                      );
+
+                      if (pairIndex != -1) {
+                        final double newPrice = tick['bp'].toDouble();
+                        final double newChange = tick['c'].toDouble();
+                        final double volume = tick['v'].toDouble();
+
+                        forexPairs[pairIndex] = forexPairs[pairIndex].copyWith(
+                          price: newPrice,
+                          change24h: newChange,
+                          volume: volume,
+                        );
+                        updatedAny = true;
+                      }
+                    }
+                  }
+                }
+
+                if (updatedAny && mounted) {
+                  setState(() {
+                    forexPairs.sort((a, b) => b.volume.compareTo(a.volume));
+                    _filterAssets();
+                  });
+                }
+              } catch (e) {
+                print('Error processing Forex WebSocket message: $e');
+              }
         },
         onError: (error) {
           print('Forex WebSocket stream error: $error');
-          // Only try to reconnect if widget is still mounted
           if (mounted) {
             Future.delayed(Duration(seconds: 30), _setupForexWebSocket);
           }
         },
         onDone: () {
           print('Forex WebSocket connection closed normally');
-          // Only try to reconnect if widget is still mounted
           if (mounted) {
             Future.delayed(Duration(seconds: 30), _setupForexWebSocket);
           }
         },
-        cancelOnError: true,  // Don't try to use the socket after an error
+        cancelOnError: true,
       );
 
     } catch (e) {
