@@ -610,7 +610,7 @@ class _DrawerContentState extends State<DrawerContent> {
 
     if (rating >= 4) {
       final url = Platform.isAndroid
-          ? 'market://details?id=com.example.crypto_rates'
+          ? 'market://details?id=com.example.crypto_rates' // todo
           : 'https://apps.apple.com/app/idYOUR_APP_ID'; // todo Replace YOUR_APP_ID
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url));
@@ -653,7 +653,7 @@ class _DrawerContentState extends State<DrawerContent> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  height: 1.5,
+                  color: Colors.black
                 ),
               ),
             ),
