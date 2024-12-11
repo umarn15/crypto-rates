@@ -612,8 +612,8 @@ class _DrawerContentState extends State<DrawerContent> {
       final url = Platform.isAndroid
           ? 'market://details?id=com.example.crypto_rates'
           : 'https://apps.apple.com/app/idYOUR_APP_ID'; // todo Replace YOUR_APP_ID
-      if (await canLaunch(url)) {
-        await launch(url);
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -621,6 +621,69 @@ class _DrawerContentState extends State<DrawerContent> {
           ),
         );
       }
+    } else {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Column(
+              children: [
+                Icon(
+                  Icons.favorite,
+                  color: Colors.red,
+                  size: 40,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Thank You',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: const Text(
+                'Thank you for your feedback. We\'ll work hard to improve your experience.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+              ),
+            ),
+            actions: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
@@ -829,16 +892,14 @@ class _DrawerContentState extends State<DrawerContent> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(
-                                   5,
+                              5,
                                   (index) => IconButton(
                                 icon: Icon(
-                                  Icons.star_border,
+                                  _rating > index ? Icons.star : Icons.star_border,
                                   color: Colors.amber,
                                   size: 32,
                                 ),
-                                onPressed: (){
-                                  _handleRating(_rating);
-                                },
+                                onPressed: () => _handleRating(index + 1),
                               ),
                             ),
                           ),
@@ -998,7 +1059,8 @@ class _DrawerContentState extends State<DrawerContent> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              // Add navigation to login screen
+              Navigator.of(context).push(MaterialPageRoute(builder: (context)=>
+              LoginScreen()));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white.withOpacity(0.1),
