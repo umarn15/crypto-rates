@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto_rates/screens/price_chart_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -7,6 +8,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../Auth/login_screen.dart';
 import '../models/alert_model.dart';
 import '../models/coin_model.dart';
+import '../models/price_chart.dart';
 import '../services/binance_service.dart';
 
 class CoinDetailScreen extends StatefulWidget {
@@ -69,7 +71,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
               final updatedCoin = currentCoin.copyWith(
                 price: newPrice,
                 change24h: newChange,
-                marketCap: double.parse(data['q']) * newPrice, // Volume * Price
+                marketCap: double.parse(data['q']) * newPrice,
               );
 
               if (mounted) {
@@ -216,8 +218,19 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _setupWebSocket,
+            icon: const Icon(Icons.bar_chart),
+            onPressed: (){
+              Navigator.of(context).push(MaterialPageRoute(builder: (context)=>
+               PriceChartScreen(initialCoin: widget.initialCoin)
+              ));
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6.0),
+            child: IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _setupWebSocket,
+            ),
           ),
         ],
       ),
@@ -316,7 +329,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              // SizedBox(height: 6),
+              // PriceChart(
+              //   coinStream: _coinController.stream,
+              //   initialCoin: currentCoin,
+              // ),
+              SizedBox(height: 6,),
               // Alert Form Card
               Card(
                 elevation: 0,

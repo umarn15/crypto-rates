@@ -287,7 +287,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
 
 
   void _updateWidget() {
-    // Check if enough time has passed since last update
     final now = DateTime.now();
     if (_lastWidgetUpdate != null &&
         now.difference(_lastWidgetUpdate!) < _minWidgetUpdateInterval) {
@@ -382,6 +381,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
         ),
       ),
       bottom: TabBar(
+        dividerColor: Colors.transparent,
         controller: _tabController,
         indicatorColor: Colors.white,
         indicatorWeight: 3,
@@ -436,6 +436,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
     required double change24h,
     required double marketCap,
     required VoidCallback onTap,
+    required bool cryptoTab,
   }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -501,6 +502,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
                           ),
                         ),
                         const SizedBox(width: 8),
+                        if(cryptoTab)
                         Text(
                           'Market Cap: ${formatMarketCap(marketCap)}',
                           style: TextStyle(
@@ -588,6 +590,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
                     ),
                   );
                 },
+                cryptoTab: true
               );
             },
           ),
@@ -608,12 +611,13 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
                 rank: index + 1,
                 price: pair.price,
                 change24h: pair.change24h,
-                marketCap: pair.volume,
+                marketCap: 0.0,
                 onTap: () {
                   Navigator.of(context).push(MaterialPageRoute(builder: (context){
                     return ForexDetailScreen(initialPair: pair);
                   }));
                 },
+                cryptoTab: false
               );
             },
           ),

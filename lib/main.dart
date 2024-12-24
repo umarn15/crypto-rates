@@ -67,7 +67,7 @@ void main () async {
 
   await FirebaseManager().initializeFirebase();
 
- await initializeApp();
+  await initializeApp();
 
   await NotificationHelper.init();
 
@@ -111,19 +111,16 @@ class _MyAppState extends State<MyApp> {
             .collection('Users')
             .doc(user.uid)
             .set({'fcmToken': token}, SetOptions(merge: true));
-        print('Token saved to Firestore');
       }
     }
 
     FirebaseMessaging.instance.onTokenRefresh.listen((String token) async {
-      print('FCM Token refreshed: $token');
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await FirebaseFirestore.instance
             .collection('Users')
             .doc(user.uid)
             .set({'fcmToken': token}, SetOptions(merge: true));
-        print('Refreshed token saved to Firestore');
       }
     });
 
