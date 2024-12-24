@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto_rates/screens/price_chart_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -217,14 +216,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            onPressed: (){
-              Navigator.of(context).push(MaterialPageRoute(builder: (context)=>
-               PriceChartScreen(initialCoin: widget.initialCoin)
-              ));
-            },
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6.0),
             child: IconButton(
@@ -329,11 +320,11 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                   ),
                 ),
               ),
-              // SizedBox(height: 6),
-              // PriceChart(
-              //   coinStream: _coinController.stream,
-              //   initialCoin: currentCoin,
-              // ),
+              SizedBox(height: 6),
+              PriceChart(
+                coinStream: _coinController.stream,
+                initialCoin: currentCoin,
+              ),
               SizedBox(height: 6,),
               // Alert Form Card
               Card(
