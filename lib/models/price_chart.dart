@@ -143,7 +143,7 @@ class _PriceChartState extends State<PriceChart> {
             ),
             const SizedBox(height: 24),
             SizedBox(
-              height: MediaQuery.sizeOf(context).height - 100,
+              height: MediaQuery.sizeOf(context).height * 0.4,
               child: pricePoints.length < 2
                   ? const Center(child: CircularProgressIndicator())
                   : LineChart(

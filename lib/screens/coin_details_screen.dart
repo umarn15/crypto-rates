@@ -86,12 +86,10 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         },
         onError: (error) {
           print('WebSocket Error: $error');
-          // Reconnect after error
           Future.delayed(Duration(seconds: 5), _setupWebSocket);
         },
         onDone: () {
           print('WebSocket connection closed');
-          // Reconnect when connection closes
           Future.delayed(Duration(seconds: 5), _setupWebSocket);
         },
       );
@@ -320,11 +318,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 6),
-              PriceChart(
-                coinStream: _coinController.stream,
-                initialCoin: currentCoin,
-              ),
               SizedBox(height: 6,),
               // Alert Form Card
               Card(
@@ -486,8 +479,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
-
+              SizedBox(height: 6),
+              PriceChart(
+                coinStream: _coinController.stream,
+                initialCoin: currentCoin,
+              ),
+              SizedBox(height: 12),
               // Saved Alerts Card
               Card(
                 elevation: 0,
