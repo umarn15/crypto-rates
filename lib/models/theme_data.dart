@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 TextStyle style = TextStyle(
   color: Colors.white,
 );
 
+final scaffoldColor = Color(0xFF151B1E);
+
 ThemeData themeData = ThemeData(
-  scaffoldBackgroundColor: Color(0xFF151B1E),
+  scaffoldBackgroundColor: scaffoldColor,
   appBarTheme: AppBarTheme(
+    systemOverlayStyle: SystemUiOverlayStyle(
+      statusBarColor: scaffoldColor,
+      systemNavigationBarColor: scaffoldColor
+    ),
     backgroundColor: Colors.transparent,
     iconTheme: IconThemeData(color: Colors.white),
     titleTextStyle: TextStyle(

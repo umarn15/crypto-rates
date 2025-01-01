@@ -25,6 +25,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
   String? _selectedCondition = 'above';
   final Color cardColor = Colors.blueGrey.shade800;
   final currentUser = FirebaseAuth.instance.currentUser;
+  final bool noUser = FirebaseAuth.instance.currentUser == null;
 
   late Stream<QuerySnapshot> alertsStream;
   late StreamController<Coin> _coinController;

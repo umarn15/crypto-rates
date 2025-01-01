@@ -9,7 +9,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'models/notification_helper.dart';
@@ -21,6 +20,7 @@ void callbackDispatcher() {
       await CryptoHomeWidget.updatePriceData();
       return Future.value(true);
     } catch (e) {
+      print('Background task failed: $e');
       return Future.value(false);
     }
   });
@@ -28,8 +28,6 @@ void callbackDispatcher() {
 
 Future<void> initializeApp() async {
   try {
-    await HomeWidget.setAppGroupId('group.com.example.crypto_rates');
-    HomeWidget.registerInteractivityCallback(backgroundCallback);
     await CryptoHomeWidget.initPlatformState();
 
     await Workmanager().initialize(callbackDispatcher);
@@ -39,17 +37,57 @@ Future<void> initializeApp() async {
       frequency: Duration(minutes: 30),
       constraints: Constraints(
         networkType: NetworkType.connected,
-        requiresBatteryNotLow: true
+        requiresBatteryNotLow: true,
+        requiresStorageNotLow: true,
       ),
-      backoffPolicy: BackoffPolicy.exponential,
+      backoffPolicy: BackoffPolicy.linear,
+      initialDelay: Duration(minutes: 5)
     );
 
+    // Initialize Firebase last
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     await NotificationHelper.init();
   } catch (e) {
     print('Initialization error: $e');
   }
 }
+
+// void callbackDispatcher() {
+//   Workmanager().executeTask((task, inputData) async {
+//     try {
+//       await CryptoHomeWidget.updatePriceData();
+//       return Future.value(true);
+//     } catch (e) {
+//       return Future.value(false);
+//     }
+//   });
+// }
+
+// Future<void> initializeApp() async {
+//   try {
+//     await HomeWidget.setAppGroupId('group.com.example.crypto_rates');
+//     HomeWidget.registerInteractivityCallback(backgroundCallback);
+//     await CryptoHomeWidget.initPlatformState();
+//
+//     await Workmanager().initialize(callbackDispatcher);
+//     await Workmanager().registerPeriodicTask(
+//       "cryptoUpdate",
+//       "updateWidget",
+//       frequency: Duration(minutes: 30),
+//       constraints: Constraints(
+//         networkType: NetworkType.connected,
+//         requiresBatteryNotLow: true,
+//         requiresStorageNotLow: true
+//       ),
+//       backoffPolicy: BackoffPolicy.exponential,
+//     );
+//
+//     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+//     await NotificationHelper.init();
+//   } catch (e) {
+//     print('Initialization error: $e');
+//   }
+// }
 
 void updateWidgetFromApp() async {
   await CryptoHomeWidget.updatePriceData();

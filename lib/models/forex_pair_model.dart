@@ -1,4 +1,3 @@
-// models/forex_pair.dart
 class ForexPair {
   final String symbol;
   final String name;

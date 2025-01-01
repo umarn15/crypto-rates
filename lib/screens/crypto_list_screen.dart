@@ -657,8 +657,8 @@ class _DrawerContentState extends State<DrawerContent> {
 
     if (rating >= 4) {
       final url = Platform.isAndroid
-          ? 'market://details?id=com.example.crypto_rates' // todo
-          : 'https://apps.apple.com/app/idYOUR_APP_ID'; // todo Replace YOUR_APP_ID
+          ? 'market://details?id=com.example.crypto_rates'
+          : 'https://apps.apple.com/app/1:297051487851:ios:dcf2d408d7055ebc10fb2e'; // todo Replace YOUR_APP_ID
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url));
       } else {
@@ -939,7 +939,7 @@ class _DrawerContentState extends State<DrawerContent> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(
-                              5,
+                                   5,
                                   (index) => IconButton(
                                 icon: Icon(
                                   _rating > index ? Icons.star : Icons.star_border,
@@ -1060,6 +1060,82 @@ class _DrawerContentState extends State<DrawerContent> {
                               ),
                             ),
                             child: const Text('Sign Out'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                ),
+                title: const Text(
+                  'Delete account',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 16,
+                  ),
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        backgroundColor: Colors.blueGrey.shade800,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        title: const Text(
+                          'Delete account',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        content: const Text(
+                          'Are you sure you want to delete your account?',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await FirebaseAuth.instance.signOut();
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                      (route) => false,
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('Delete Account'),
                           ),
                         ],
                       );
