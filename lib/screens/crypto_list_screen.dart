@@ -658,7 +658,7 @@ class _DrawerContentState extends State<DrawerContent> {
     if (rating >= 4) {
       final url = Platform.isAndroid
           ? 'market://details?id=com.example.crypto_rates'
-          : 'https://apps.apple.com/app/1:297051487851:ios:dcf2d408d7055ebc10fb2e'; // todo Replace YOUR_APP_ID
+          : 'https://apps.apple.com/app/1:297051487851:ios:dcf2d408d7055ebc10fb2e';
       if (await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url));
       } else {
