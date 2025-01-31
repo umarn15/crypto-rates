@@ -26,6 +26,25 @@ void callbackDispatcher() {
   });
 }
 
+void main () async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await CryptoHomeWidget.updatePriceData();
+
+  await FirebaseManager().initializeFirebase();
+
+  await initializeApp();
+
+  await NotificationHelper.init();
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  prefs = await SharedPreferences.getInstance();
+
+  runApp(MyApp());
+}
+
+
 Future<void> initializeApp() async {
   try {
     await CryptoHomeWidget.initPlatformState();
@@ -52,43 +71,6 @@ Future<void> initializeApp() async {
   }
 }
 
-// void callbackDispatcher() {
-//   Workmanager().executeTask((task, inputData) async {
-//     try {
-//       await CryptoHomeWidget.updatePriceData();
-//       return Future.value(true);
-//     } catch (e) {
-//       return Future.value(false);
-//     }
-//   });
-// }
-
-// Future<void> initializeApp() async {
-//   try {
-//     await HomeWidget.setAppGroupId('group.com.example.crypto_rates');
-//     HomeWidget.registerInteractivityCallback(backgroundCallback);
-//     await CryptoHomeWidget.initPlatformState();
-//
-//     await Workmanager().initialize(callbackDispatcher);
-//     await Workmanager().registerPeriodicTask(
-//       "cryptoUpdate",
-//       "updateWidget",
-//       frequency: Duration(minutes: 30),
-//       constraints: Constraints(
-//         networkType: NetworkType.connected,
-//         requiresBatteryNotLow: true,
-//         requiresStorageNotLow: true
-//       ),
-//       backoffPolicy: BackoffPolicy.exponential,
-//     );
-//
-//     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-//     await NotificationHelper.init();
-//   } catch (e) {
-//     print('Initialization error: $e');
-//   }
-// }
-
 void updateWidgetFromApp() async {
   await CryptoHomeWidget.updatePriceData();
 }
@@ -97,24 +79,6 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
 late SharedPreferences prefs;
-
-void main () async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await CryptoHomeWidget.updatePriceData();
-
-  await FirebaseManager().initializeFirebase();
-
-  await initializeApp();
-
-  await NotificationHelper.init();
-
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  prefs = await SharedPreferences.getInstance();
-
-  runApp(MyApp());
-}
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();

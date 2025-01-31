@@ -28,9 +28,30 @@ class BinanceService {
     'UNI': 'Uniswap',
     'ETC': 'Ethereum Classic',
     'NEAR': 'NEAR Protocol',
+    'ALGO': 'Algorand',
+    'FIL': 'Filecoin',
+    'VET': 'VeChain',
+    'ICP': 'Internet Computer',
+    'AAVE': 'Aave',
+    'XTZ': 'Tezos',
+    'EOS': 'EOS',
+    'MKR': 'Maker',
+    'ZEC': 'Zcash',
+    'DASH': 'Dash',
+    'NEO': 'NEO',
+    'WAVES': 'Waves',
+    'QTUM': 'Qtum',
+    'KSM': 'Kusama',
+    'BAT': 'Basic Attention Token',
+    'COMP': 'Compound',
+    'YFI': 'Yearn.finance',
+    'SNX': 'Synthetix',
+    'GRT': 'The Graph',
+    'SUSHI': 'SushiSwap',
+    'CRV': 'Curve DAO Token',
+    '1INCH': '1inch Network',
+    'ENJ': 'Enjin Coin',
   };
-
-
 
   static Future<List<Coin>> getInitialData() async {
     try {
@@ -38,36 +59,36 @@ class BinanceService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        List<Coin> coins = [];
+        final List<Coin> coins = [];
 
-        // First, filter USDT pairs and create coins
-        data.where((item) => item['symbol'].toString().endsWith('USDT')).forEach((item) {
+        // Filter USDT pairs and create coins
+        for (final item in data) {
           final symbol = item['symbol'].toString().replaceAll('USDT', '');
-
-          // Ensure only coins in _symbolToName are included
           if (_symbolToName.containsKey(symbol)) {
-            final price = double.parse(item['lastPrice']);
-            final volume = double.parse(item['quoteVolume']); // USDT volume
-            final marketCap = price * volume; // Approximate market cap
+            final price = double.tryParse(item['lastPrice'] ?? '0') ?? 0;
+            final volume = double.tryParse(item['quoteVolume'] ?? '0') ?? 0;
+            final marketCap = price * volume;
 
             coins.add(Coin(
               symbol: symbol,
               name: _symbolToName[symbol]!,
               price: price,
-              change24h: double.parse(item['priceChangePercent']),
+              change24h: double.tryParse(item['priceChangePercent'] ?? '0') ?? 0,
               marketCap: marketCap,
-              rank: 0, // Will set after sorting
+              rank: 0,
             ));
           }
-        });
+        }
+
+        // Sort by market cap descending
         coins.sort((a, b) => b.marketCap.compareTo(a.marketCap));
 
+        // Assign ranks
         for (int i = 0; i < coins.length; i++) {
           coins[i] = coins[i].copyWith(rank: i + 1);
         }
 
-        // Take top 20
-        return coins.take(20).toList();
+        return coins;
       } else {
         throw Exception('Failed to load data');
       }
@@ -78,17 +99,15 @@ class BinanceService {
   }
 
   static WebSocketChannel getWebSocket(List<String> symbols) {
-    final List<String> streams = symbols.map((symbol) =>
-    '${symbol.toLowerCase()}usdt@ticker'
-    ).toList();
-
-    final url = Uri.parse('$websocketUrl/stream?streams=${streams.join("/")}');
-    return WebSocketChannel.connect(url);
+    final streams = symbols.map((s) => '${s.toLowerCase()}usdt@ticker').toList();
+    return WebSocketChannel.connect(
+      Uri.parse('$websocketUrl/stream?streams=${streams.join("/")}'),
+    );
   }
 
   static WebSocketChannel getSingleCoinWebSocket(String symbol) {
-    final streamName = '${symbol.toLowerCase()}usdt@ticker';
-    final url = Uri.parse('$websocketUrl/$streamName');
-    return WebSocketChannel.connect(url);
+    return WebSocketChannel.connect(
+      Uri.parse('$websocketUrl/${symbol.toLowerCase()}usdt@ticker'),
+    );
   }
 }

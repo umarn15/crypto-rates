@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crypto_rates/Auth/login_screen.dart';
 import 'package:crypto_rates/models/user_model.dart';
-import 'package:crypto_rates/screens/forex_details_screen.dart';
 import 'package:crypto_rates/screens/saved_alerts_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -13,9 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/coin_model.dart';
-import '../models/forex_pair_model.dart';
 import '../services/binance_service.dart';
-import '../services/forex_service.dart';
 import 'coin_details_screen.dart';
 
 class CryptoListScreen extends StatefulWidget {
@@ -31,12 +28,8 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
   late TabController _tabController;
   List<Coin> coins = [];
   List<Coin> filteredCoins = [];
-  List<ForexPair> forexPairs = [];
-  List<ForexPair> filteredForexPairs = [];
   bool isCryptoLoading = true;
-  bool isForexLoading = true;
   WebSocketChannel? _cryptoChannel;
-  WebSocketChannel? _forexChannel;
   late final StreamController<List<Coin>> _coinsController;
   final DrawerContent _drawerContent = const DrawerContent();
   final TextEditingController _searchController = TextEditingController();
@@ -45,7 +38,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
     _coinsController = StreamController<List<Coin>>.broadcast();
     _searchController.addListener(_filterAssets);
     _initializeData();
@@ -55,7 +48,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
     if (_searchController.text.isEmpty) {
       setState(() {
         filteredCoins = coins;
-        filteredForexPairs = forexPairs;
       });
       return;
     }
@@ -66,19 +58,11 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
         return coin.name.toLowerCase().contains(query) ||
             coin.symbol.toLowerCase().contains(query);
       }).toList();
-
-      filteredForexPairs = forexPairs.where((pair) {
-        return pair.name.toLowerCase().contains(query) ||
-            pair.symbol.toLowerCase().contains(query);
-      }).toList();
     });
   }
 
   Future<void> _initializeData() async {
-    await Future.wait([
-      _initializeCryptoData(),
-      _initializeForexData(),
-    ]);
+    await _initializeCryptoData();
   }
 
   Future<void> _initializeCryptoData() async {
@@ -104,30 +88,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
       }
     }
   }
-
-  Future<void> _initializeForexData() async {
-    try {
-      setState(() => isForexLoading = true);
-
-      final initialForex = await ForexService.getInitialData();
-
-      if (mounted) {
-        setState(() {
-          forexPairs = initialForex;
-          filteredForexPairs = initialForex;
-          isForexLoading = false;
-        });
-
-        _setupForexWebSocket();
-      }
-    } catch (e) {
-      print('Error initializing forex data: $e');
-      if (mounted) {
-        setState(() => isForexLoading = false);
-      }
-    }
-  }
-
 
   void _setupCryptoWebSocket() {
     try {
@@ -199,98 +159,11 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
     }
   }
 
-  void _setupForexWebSocket() {
-    if (!mounted) return;
-
-    try {
-      _forexChannel?.sink.close();
-
-      _forexChannel = WebSocketChannel.connect(
-        Uri.parse('wss://socket.polygon.io/forex'),
-      );
-
-      _forexChannel!.stream.handleError((error) {
-        print('Forex WebSocket connection error: $error');
-        return;
-      }).listen(
-            (dynamic message) {
-              try {
-                final data = jsonDecode(message);
-
-                if (data is Map && data['status'] == 'connected') {
-                  print('Successfully connected to forex stream');
-                  return;
-                }
-
-                if (data is Map && data['status'] == 'auth_success') {
-                  print('Successfully authenticated');
-                  return;
-                }
-
-                bool updatedAny = false;
-                if (data is List) {
-                  for (var tick in data) {
-                    if (tick['ev'] == 'C') {
-                      final String pair = tick['p'];
-                      final pairIndex = forexPairs.indexWhere(
-                              (forex) => forex.symbol == pair
-                      );
-
-                      if (pairIndex != -1) {
-                        final double newPrice = tick['bp'].toDouble();
-                        final double newChange = tick['c'].toDouble();
-                        final double volume = tick['v'].toDouble();
-
-                        forexPairs[pairIndex] = forexPairs[pairIndex].copyWith(
-                          price: newPrice,
-                          change24h: newChange,
-                          volume: volume,
-                        );
-                        updatedAny = true;
-                      }
-                    }
-                  }
-                }
-
-                if (updatedAny && mounted) {
-                  setState(() {
-                    forexPairs.sort((a, b) => b.volume.compareTo(a.volume));
-                    _filterAssets();
-                  });
-                }
-              } catch (e) {
-                print('Error processing Forex WebSocket message: $e');
-              }
-        },
-        onError: (error) {
-          print('Forex WebSocket stream error: $error');
-          if (mounted) {
-            Future.delayed(Duration(seconds: 30), _setupForexWebSocket);
-          }
-        },
-        onDone: () {
-          print('Forex WebSocket connection closed normally');
-          if (mounted) {
-            Future.delayed(Duration(seconds: 30), _setupForexWebSocket);
-          }
-        },
-        cancelOnError: true,
-      );
-
-    } catch (e) {
-      print('Error setting up Forex WebSocket: $e');
-      if (mounted) {
-        Future.delayed(Duration(seconds: 30), _setupForexWebSocket);
-      }
-    }
-  }
-
-
   void _updateWidget() {
     final now = DateTime.now();
     if (_lastWidgetUpdate != null &&
         now.difference(_lastWidgetUpdate!) < _minWidgetUpdateInterval) {
-      return; // Skip update if too soon
+      return;
     }
 
     try {
@@ -354,7 +227,7 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
           autofocus: true,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            hintText: 'Search...',
+            hintText: 'Search Coins...',
             hintStyle: const TextStyle(color: Colors.white60),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -379,25 +252,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-      ),
-      bottom: TabBar(
-        dividerColor: Colors.transparent,
-        controller: _tabController,
-        indicatorColor: Colors.white,
-        indicatorWeight: 3,
-        labelStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 16,
-          color: Colors.grey
-        ),
-        tabs: const [
-          Tab(text: 'Crypto'),
-          Tab(text: 'Forex'),
-        ],
       ),
       actions: [
         IconButton(
@@ -436,7 +290,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
     required double change24h,
     required double marketCap,
     required VoidCallback onTap,
-    required bool cryptoTab,
   }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -502,7 +355,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
                           ),
                         ),
                         const SizedBox(width: 8),
-                        if(cryptoTab)
                         Text(
                           'Market Cap: ${formatMarketCap(marketCap)}',
                           style: TextStyle(
@@ -556,72 +408,34 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
       drawer: _drawerContent,
-      body: TabBarView(
-        physics: AlwaysScrollableScrollPhysics(),
-        controller: _tabController,
-        children: [
-          // Crypto Tab
-          isCryptoLoading
-              ? const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          )
-              : ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: filteredCoins.length,
-            itemBuilder: (context, index) {
-              final coin = filteredCoins[index];
-              return _buildAssetCard(
-                name: coin.name,
-                symbol: coin.symbol,
-                rank: coin.rank,
-                price: coin.price,
-                change24h: coin.change24h,
-                marketCap: coin.marketCap,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CoinDetailScreen(initialCoin: coin),
-                    ),
-                  );
-                },
-                cryptoTab: true
+      body: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: filteredCoins.length,
+        itemBuilder: (context, index) {
+          final coin = filteredCoins[index];
+          return _buildAssetCard(
+            name: coin.name,
+            symbol: coin.symbol,
+            rank: coin.rank,
+            price: coin.price,
+            change24h: coin.change24h,
+            marketCap: coin.marketCap,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CoinDetailScreen(initialCoin: coin),
+                ),
               );
             },
-          ),
-
-          // Forex Tab
-          isForexLoading
-              ? const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          )
-              : ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: filteredForexPairs.length,
-            itemBuilder: (context, index) {
-              final pair = filteredForexPairs[index];
-              return _buildAssetCard(
-                name: pair.name,
-                symbol: pair.symbol,
-                rank: index + 1,
-                price: pair.price,
-                change24h: pair.change24h,
-                marketCap: 0.0,
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (context){
-                    return ForexDetailScreen(initialPair: pair);
-                  }));
-                },
-                cryptoTab: false
-              );
-            },
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -631,7 +445,6 @@ class _CryptoListScreenState extends State<CryptoListScreen> with SingleTickerPr
     _tabController.dispose();
     _searchController.dispose();
     _cryptoChannel?.sink.close();
-    _forexChannel?.sink.close();
     _coinsController.close();
     super.dispose();
   }
